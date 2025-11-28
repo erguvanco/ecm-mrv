@@ -1,0 +1,331 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// FEEDSTOCK MODULE
+// ============================================
+model FeedstockDelivery {
+  id                  String   @id @default(uuid())
+  date                DateTime
+  vehicleId           String?
+  vehicleDescription  String?
+  deliveryDistanceKm  Float
+  weightTonnes        Float?
+  volumeM3            Float?
+  feedstockType       String
+  fuelType            String?
+  fuelAmount          Float?
+  notes               String?
+  // Location fields for network map
+  sourceAddress       String?
+  sourceLat           Float?
+  sourceLng           Float?
+  geocodeStatus       String?  // pending, success, failed
+  // Route fields for actual road navigation
+  routeGeometry       String?  // GeoJSON LineString as JSON string
+  routeDistanceKm     Float?   // Calculated road distance from Mapbox
+  routeDurationMin    Float?   // Estimated travel time in minutes
+  routeCalculatedAt   DateTime? // When route was last calculated
+  routeStatus         String?  // pending, success, failed, no_plant
+  // Truck arrival photo
+  truckPhotoUrl       String?  // URL to uploaded truck photo
+  truckPhotoUploadedAt DateTime? // When the photo was uploaded
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  productionBatches   ProductionBatch[]
+  transportEvents     TransportEvent[]
+  evidence            EvidenceFile[]
+
+  @@index([date])
+  @@index([feedstockType])
+  @@index([geocodeStatus])
+  @@index([routeStatus])
+}
+
+// ============================================
+// PRODUCTION MODULE
+// ============================================
+model ProductionBatch {
+  id                          String   @id @default(uuid())
+  productionDate              DateTime
+  feedstockDeliveryId         String?
+  feedstockDelivery           FeedstockDelivery? @relation(fields: [feedstockDeliveryId], references: [id])
+  inputFeedstockWeightTonnes  Float
+  outputBiocharWeightTonnes   Float
+  temperatureMin              Float?
+  temperatureMax              Float?
+  temperatureAvg              Float?
+  status                      String   @default("draft") // draft, complete
+  wizardStep                  Int      @default(1)
+  notes                       String?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  energyUsages                EnergyUsage[]
+  sequestrationBatches        SequestrationBatch[]
+  bcuBatches                  BCUProductionBatch[]
+  evidence                    EvidenceFile[]
+
+  @@index([productionDate])
+  @@index([status])
+}
+
+// ============================================
+// ENERGY MODULE
+// ============================================
+model EnergyUsage {
+  id                String   @id @default(uuid())
+  scope             String   // production, transport, other
+  energyType        String   // electricity, diesel, gas, propane
+  quantity          Float
+  unit              String   // kWh, litres, m3
+  periodStart       DateTime
+  periodEnd         DateTime
+  productionBatchId String?
+  productionBatch   ProductionBatch? @relation(fields: [productionBatchId], references: [id])
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  evidence          EvidenceFile[]
+
+  @@index([periodStart])
+  @@index([energyType])
+}
+
+// ============================================
+// TRANSPORT MODULE
+// ============================================
+model TransportEvent {
+  id                    String   @id @default(uuid())
+  date                  DateTime
+  vehicleId             String?
+  vehicleDescription    String?
+  distanceKm            Float
+  fuelType              String?
+  fuelAmount            Float?
+  cargoDescription      String?
+  feedstockDeliveryId   String?
+  feedstockDelivery     FeedstockDelivery? @relation(fields: [feedstockDeliveryId], references: [id])
+  sequestrationEventId  String?
+  sequestrationEvent    SequestrationEvent? @relation(fields: [sequestrationEventId], references: [id])
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  evidence              EvidenceFile[]
+
+  @@index([date])
+}
+
+// ============================================
+// SEQUESTRATION MODULE
+// ============================================
+model SequestrationEvent {
+  id                          String    @id @default(uuid())
+  storageBeforeDelivery       Boolean   @default(false)
+  storageLocation             String?
+  storageStartDate            DateTime?
+  storageEndDate              DateTime?
+  storageContainerIds         String?
+  storageConditions           String?
+  finalDeliveryDate           DateTime
+  deliveryVehicleDescription  String?
+  deliveryPostcode            String
+  // Destination coordinates for network map
+  destinationLat              Float?
+  destinationLng              Float?
+  geocodeStatus               String?   // pending, success, failed
+  // Route fields for actual road navigation
+  routeGeometry               String?   // GeoJSON LineString as JSON string
+  routeDistanceKm             Float?    // Calculated road distance from Mapbox
+  routeDurationMin            Float?    // Estimated travel time in minutes
+  routeCalculatedAt           DateTime? // When route was last calculated
+  routeStatus                 String?   // pending, success, failed, no_plant
+  sequestrationType           String    // soil, compost, construction, other
+  status                      String    @default("draft") // draft, complete
+  wizardStep                  Int       @default(1)
+  notes                       String?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  batches                     SequestrationBatch[]
+  transportEvents             TransportEvent[]
+  bcuEvents                   BCUSequestrationEvent[]
+  evidence                    EvidenceFile[]
+
+  @@index([finalDeliveryDate])
+  @@index([status])
+  @@index([geocodeStatus])
+  @@index([routeStatus])
+}
+
+model SequestrationBatch {
+  sequestrationId   String
+  productionBatchId String
+  quantityTonnes    Float
+  sequestration     SequestrationEvent @relation(fields: [sequestrationId], references: [id], onDelete: Cascade)
+  productionBatch   ProductionBatch    @relation(fields: [productionBatchId], references: [id])
+
+  @@id([sequestrationId, productionBatchId])
+}
+
+// ============================================
+// EVIDENCE FILES
+// ============================================
+model EvidenceFile {
+  id                    String   @id @default(uuid())
+  fileName              String
+  fileType              String   // pdf, image, csv, other
+  fileSize              Int
+  mimeType              String
+  storagePath           String   // Simulated path
+  category              String   // sustainability, transport_license, weight_in, biochar_out, temperature_log, delivery, regulatory, storage, general
+  description           String?
+  uploadedAt            DateTime @default(now())
+
+  // Generic polymorphic relations - entity can link to multiple parent types
+  feedstockDeliveryId   String?
+  feedstockDelivery     FeedstockDelivery? @relation(fields: [feedstockDeliveryId], references: [id], onDelete: Cascade)
+
+  productionBatchId     String?
+  productionBatch       ProductionBatch? @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+
+  energyUsageId         String?
+  energyUsage           EnergyUsage? @relation(fields: [energyUsageId], references: [id], onDelete: Cascade)
+
+  transportEventId      String?
+  transportEvent        TransportEvent? @relation(fields: [transportEventId], references: [id], onDelete: Cascade)
+
+  sequestrationEventId  String?
+  sequestrationEvent    SequestrationEvent? @relation(fields: [sequestrationEventId], references: [id], onDelete: Cascade)
+
+  bcuId                 String?
+  bcu                   BCU? @relation(fields: [bcuId], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([uploadedAt])
+}
+
+// ============================================
+// BCU (Biochar Carbon Unit) MODULE
+// ============================================
+model BCU {
+  id                    String   @id @default(uuid())
+  quantityTonnesCO2e    Float
+  issuanceDate          DateTime
+  status                String   @default("issued") // issued, transferred, retired
+  registrySerialNumber  String   @unique
+  ownerName             String?
+  accountId             String?
+  retirementDate        DateTime?
+  retirementBeneficiary String?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  productionBatches     BCUProductionBatch[]
+  sequestrationEvents   BCUSequestrationEvent[]
+  evidence              EvidenceFile[]
+
+  @@index([status])
+  @@index([issuanceDate])
+}
+
+model BCUProductionBatch {
+  bcuId             String
+  productionBatchId String
+  bcu               BCU             @relation(fields: [bcuId], references: [id], onDelete: Cascade)
+  productionBatch   ProductionBatch @relation(fields: [productionBatchId], references: [id])
+
+  @@id([bcuId, productionBatchId])
+}
+
+model BCUSequestrationEvent {
+  bcuId           String
+  sequestrationId String
+  bcu             BCU                @relation(fields: [bcuId], references: [id], onDelete: Cascade)
+  sequestration   SequestrationEvent @relation(fields: [sequestrationId], references: [id])
+
+  @@id([bcuId, sequestrationId])
+}
+
+// ============================================
+// PLANT SETTINGS (Singleton)
+// ============================================
+model PlantSettings {
+  id          String   @id @default("singleton")
+  plantName   String   @default("Biochar Plant")
+  address     String?
+  lat         Float?
+  lng         Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// GEOCODE CACHE
+// ============================================
+model GeocodeCache {
+  id               String   @id @default(uuid())
+  queryString      String   @unique
+  lat              Float
+  lng              Float
+  formattedAddress String?
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
+
+  @@index([queryString])
+  @@index([expiresAt])
+}
+
+// ============================================
+// ROUTE CACHE (Mapbox Directions API)
+// ============================================
+model RouteCache {
+  id              String   @id @default(uuid())
+  originLat       Float
+  originLng       Float
+  destLat         Float
+  destLng         Float
+  distanceKm      Float
+  durationMin     Float?
+  geometry        String   // GeoJSON LineString as JSON string
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime // 30-day TTL
+
+  @@unique([originLat, originLng, destLat, destLng])
+  @@index([expiresAt])
+}
+
+// ============================================
+// QR CODE SCAN LOGGING
+// ============================================
+model QRScanLog {
+  id              String   @id @default(uuid())
+  scannedAt       DateTime @default(now())
+
+  // What was scanned
+  entityType      String   // production, feedstock, sequestration, transport, energy, registry
+  entityId        String
+
+  // Context
+  scanContext     String?  // navigation, batch_link, verification
+  sourcePagePath  String?
+  scanResult      String   // success, entity_not_found, invalid_qr
+
+  // Device info
+  userAgent       String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([scannedAt])
+}
