@@ -20,9 +20,11 @@ import {
   DialogFooter,
   Spinner,
   EmptyState,
+  SortableTableHead,
 } from '@/components/ui';
 import { Zap } from 'lucide-react';
 import { ENERGY_SCOPES, ENERGY_TYPES, ENERGY_UNITS } from '@/lib/validations/energy';
+import { useTableSort } from '@/hooks/use-table-sort';
 
 interface EnergyUsage {
   id: string;
@@ -44,6 +46,12 @@ export function EnergyTable({ energyUsages }: EnergyTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(energyUsages, {
+    key: 'periodStart',
+    direction: 'desc',
+  });
 
   const getScopeLabel = (value: string) => {
     return ENERGY_SCOPES.find((s) => s.value === value)?.label || value;
@@ -94,17 +102,45 @@ export function EnergyTable({ energyUsages }: EnergyTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Period</TableHead>
-              <TableHead>Scope</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Quantity</TableHead>
+              <SortableTableHead
+                sortKey="periodStart"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Period
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="scope"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Scope
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="energyType"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Type
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="quantity"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Quantity
+              </SortableTableHead>
               <TableHead>Linked Batch</TableHead>
               <TableHead>Evidence</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {energyUsages.map((energy) => (
+            {sortedData.map((energy) => (
               <TableRow
                 key={energy.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"

@@ -21,12 +21,15 @@ import {
   Spinner,
   EmptyState,
   TableToolbar,
+  SortableTableHead,
 } from '@/components/ui';
 import { Leaf } from 'lucide-react';
 import { FEEDSTOCK_TYPES } from '@/lib/validations/feedstock';
+import { useTableSort } from '@/hooks/use-table-sort';
 
 interface FeedstockDelivery {
   id: string;
+  serialNumber: number;
   date: string;
   feedstockType: string;
   weightTonnes: number | null;
@@ -57,10 +60,15 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
     );
   };
 
+  // Helper to format display ID
+  const formatDisplayId = (serialNumber: number) => `FD-${String(serialNumber).padStart(3, '0')}`;
+
   // Filter feedstocks based on search and type filter
   const filteredFeedstocks = useMemo(() => {
     return feedstocks.filter((feedstock) => {
+      const displayId = formatDisplayId(feedstock.serialNumber);
       const matchesSearch = searchQuery === '' ||
+        displayId.toLowerCase().includes(searchQuery.toLowerCase()) ||
         feedstock.vehicleId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         getFeedstockTypeLabel(feedstock.feedstockType).toLowerCase().includes(searchQuery.toLowerCase()) ||
         format(new Date(feedstock.date), 'MMM d, yyyy').toLowerCase().includes(searchQuery.toLowerCase());
@@ -70,6 +78,12 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
       return matchesSearch && matchesType;
     });
   }, [feedstocks, searchQuery, typeFilter]);
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(filteredFeedstocks, {
+    key: 'date',
+    direction: 'desc',
+  });
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -122,29 +136,82 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Weight</TableHead>
-              <TableHead>Volume</TableHead>
-              <TableHead>Distance</TableHead>
-              <TableHead>Vehicle</TableHead>
+              <SortableTableHead
+                sortKey="serialNumber"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                ID
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="date"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Date
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="feedstockType"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Type
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="weightTonnes"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Weight
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="volumeM3"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Volume
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="deliveryDistanceKm"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Distance
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="vehicleId"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Vehicle
+              </SortableTableHead>
               <TableHead>Evidence</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredFeedstocks.length === 0 ? (
+            {sortedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-[var(--muted-foreground)]">
+                <TableCell colSpan={9} className="text-center py-8 text-[var(--muted-foreground)]">
                   No deliveries match your search criteria
                 </TableCell>
               </TableRow>
-            ) : filteredFeedstocks.map((feedstock) => (
+            ) : sortedData.map((feedstock) => (
               <TableRow
                 key={feedstock.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"
                 onClick={() => router.push(`/feedstock/${feedstock.id}`)}
               >
+                <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
+                  {formatDisplayId(feedstock.serialNumber)}
+                </TableCell>
                 <TableCell className="font-medium">
                   {format(new Date(feedstock.date), 'MMM d, yyyy')}
                 </TableCell>
@@ -205,9 +272,9 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
           </TableBody>
         </Table>
       </div>
-      {filteredFeedstocks.length > 0 && (
+      {sortedData.length > 0 && (
         <p className="text-xs text-[var(--muted-foreground)] mt-2">
-          Showing {filteredFeedstocks.length} of {feedstocks.length} deliveries
+          Showing {sortedData.length} of {feedstocks.length} deliveries
         </p>
       )}
 

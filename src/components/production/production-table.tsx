@@ -21,11 +21,14 @@ import {
   Spinner,
   Progress,
   EmptyState,
+  SortableTableHead,
 } from '@/components/ui';
 import { Factory } from 'lucide-react';
+import { useTableSort } from '@/hooks/use-table-sort';
 
 interface ProductionBatch {
   id: string;
+  serialNumber: number;
   productionDate: string;
   inputFeedstockWeightTonnes: number;
   outputBiocharWeightTonnes: number;
@@ -33,6 +36,7 @@ interface ProductionBatch {
   wizardStep: number;
   feedstockDelivery?: {
     id: string;
+    serialNumber: number;
     date: string;
     feedstockType: string;
   } | null;
@@ -51,6 +55,15 @@ export function ProductionTable({ batches }: ProductionTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Helper to format display ID
+  const formatDisplayId = (serialNumber: number) => `PB-${String(serialNumber).padStart(3, '0')}`;
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(batches, {
+    key: 'productionDate',
+    direction: 'desc',
+  });
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -89,17 +102,53 @@ export function ProductionTable({ batches }: ProductionTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Input</TableHead>
-              <TableHead>Output</TableHead>
+              <SortableTableHead
+                sortKey="serialNumber"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                ID
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="productionDate"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Date
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="inputFeedstockWeightTonnes"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Input
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="outputBiocharWeightTonnes"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Output
+              </SortableTableHead>
               <TableHead>Conversion</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead
+                sortKey="status"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Status
+              </SortableTableHead>
               <TableHead>Progress</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {batches.map((batch) => {
+            {sortedData.map((batch) => {
               const conversionRate =
                 batch.inputFeedstockWeightTonnes > 0
                   ? (batch.outputBiocharWeightTonnes /
@@ -113,6 +162,9 @@ export function ProductionTable({ batches }: ProductionTableProps) {
                   className="cursor-pointer hover:bg-[var(--muted)]"
                   onClick={() => router.push(`/production/${batch.id}`)}
                 >
+                  <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
+                    {formatDisplayId(batch.serialNumber)}
+                  </TableCell>
                   <TableCell className="font-medium">
                     {format(new Date(batch.productionDate), 'MMM d, yyyy')}
                   </TableCell>

@@ -21,7 +21,7 @@ export const updateProductionBatchSchema = productionBatchSchema.partial().requi
 // Wizard step validation schemas
 export const productionStep1Schema = z.object({
   productionDate: z.coerce.date({ required_error: 'Production date is required' }),
-  feedstockDeliveryId: z.string().uuid().optional().nullable(),
+  feedstockDeliveryId: z.string().uuid().optional().nullable().or(z.literal('')),
 });
 
 export const productionStep2Schema = z.object({

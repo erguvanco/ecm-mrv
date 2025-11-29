@@ -193,6 +193,33 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-lg">Source Location *</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Label>Feedstock Source Address *</Label>
+              <HelpTooltip content="Search for the location where feedstock was collected. The delivery distance will be calculated automatically from this address to your plant." />
+            </div>
+            <AddressSearch
+              value={sourceLocation}
+              onChange={handleSourceLocationChange}
+              placeholder="Search for source address..."
+            />
+            {(errors.sourceAddress || errors.sourceLat || errors.sourceLng) && (
+              <p className="text-sm text-red-500">
+                Source address is required
+              </p>
+            )}
+          </div>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            The delivery distance will be calculated automatically based on the driving route from this address to your plant location.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-lg">Transport Information</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
@@ -212,25 +239,6 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
               {...register('vehicleDescription')}
               placeholder="e.g., 20t Truck"
             />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Label htmlFor="deliveryDistanceKm">Delivery Distance (km) *</Label>
-              <HelpTooltip content="Used to calculate Scope 3 transport emissions" />
-            </div>
-            <Input
-              id="deliveryDistanceKm"
-              type="number"
-              step="0.1"
-              {...register('deliveryDistanceKm')}
-              className={errors.deliveryDistanceKm ? 'border-red-500' : ''}
-            />
-            {errors.deliveryDistanceKm && (
-              <p className="text-sm text-red-500">
-                {errors.deliveryDistanceKm.message}
-              </p>
-            )}
           </div>
 
           <div className="space-y-2">
@@ -262,25 +270,6 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
                 {errors.fuelAmount.message}
               </p>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Source Location</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Label>Feedstock Source Address</Label>
-              <HelpTooltip content="Search for the location where feedstock was collected. This will be shown on the network map." />
-            </div>
-            <AddressSearch
-              value={sourceLocation}
-              onChange={handleSourceLocationChange}
-              placeholder="Search for source address..."
-            />
           </div>
         </CardContent>
       </Card>

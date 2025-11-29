@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { OnboardingBanner, WorkflowIndicator } from '@/components/ui';
 import type { OnboardingStep, WorkflowStep } from '@/components/ui';
+import { DashboardMap } from '@/components/dashboard';
 import db from '@/lib/db';
 
 async function getStats() {
@@ -253,6 +254,9 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Supply Network Map */}
+      <DashboardMap />
     </div>
   );
 }

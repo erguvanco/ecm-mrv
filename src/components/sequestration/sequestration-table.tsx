@@ -21,9 +21,11 @@ import {
   Spinner,
   Progress,
   EmptyState,
+  SortableTableHead,
 } from '@/components/ui';
 import { TreePine } from 'lucide-react';
 import { SEQUESTRATION_TYPES } from '@/lib/validations/sequestration';
+import { useTableSort } from '@/hooks/use-table-sort';
 
 interface SequestrationEvent {
   id: string;
@@ -57,6 +59,12 @@ export function SequestrationTable({ events }: SequestrationTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(events, {
+    key: 'finalDeliveryDate',
+    direction: 'desc',
+  });
 
   const getTypeLabel = (value: string) => {
     return SEQUESTRATION_TYPES.find((t) => t.value === value)?.label || value;
@@ -99,17 +107,52 @@ export function SequestrationTable({ events }: SequestrationTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Delivery Date</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Postcode</TableHead>
+              <SortableTableHead
+                sortKey="finalDeliveryDate"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Delivery Date
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="sequestrationType"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Type
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="quantityTonnes"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Quantity
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="deliveryPostcode"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Postcode
+              </SortableTableHead>
               <TableHead>Storage</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead
+                sortKey="status"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Status
+              </SortableTableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {events.map((event) => (
+            {sortedData.map((event) => (
               <TableRow
                 key={event.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"

@@ -5,17 +5,18 @@ export const feedstockDeliverySchema = z.object({
   date: z.coerce.date(),
   vehicleId: z.string().optional().nullable(),
   vehicleDescription: z.string().optional().nullable(),
-  deliveryDistanceKm: z.coerce.number().positive('Distance must be positive'),
+  // Distance is auto-calculated from route - defaults to 0 until route is calculated
+  deliveryDistanceKm: z.coerce.number().nonnegative('Distance cannot be negative').default(0),
   weightTonnes: z.coerce.number().positive('Weight must be positive').optional().nullable(),
   volumeM3: z.coerce.number().positive('Volume must be positive').optional().nullable(),
   feedstockType: z.string().min(1, 'Feedstock type is required'),
   fuelType: z.string().optional().nullable(),
   fuelAmount: z.coerce.number().positive('Fuel amount must be positive').optional().nullable(),
   notes: z.string().optional().nullable(),
-  // Location fields for network map
-  sourceAddress: z.string().optional().nullable(),
-  sourceLat: z.coerce.number().min(-90).max(90).optional().nullable(),
-  sourceLng: z.coerce.number().min(-180).max(180).optional().nullable(),
+  // Location fields - required for route calculation
+  sourceAddress: z.string().min(1, 'Source address is required'),
+  sourceLat: z.coerce.number().min(-90).max(90),
+  sourceLng: z.coerce.number().min(-180).max(180),
 });
 
 export const createFeedstockDeliverySchema = feedstockDeliverySchema.omit({ id: true });

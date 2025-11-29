@@ -20,9 +20,11 @@ import {
   DialogFooter,
   Spinner,
   EmptyState,
+  SortableTableHead,
 } from '@/components/ui';
 import { Award } from 'lucide-react';
 import { BCU_STATUSES } from '@/lib/validations/bcu';
+import { useTableSort } from '@/hooks/use-table-sort';
 
 interface BCU {
   id: string;
@@ -48,6 +50,12 @@ export function BCUTable({ bcus }: BCUTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(bcus, {
+    key: 'issuanceDate',
+    direction: 'desc',
+  });
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -102,17 +110,59 @@ export function BCUTable({ bcus }: BCUTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Serial Number</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Issued</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Owner</TableHead>
-              <TableHead>Beneficiary</TableHead>
+              <SortableTableHead
+                sortKey="registrySerialNumber"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Serial Number
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="quantityTonnesCO2e"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Quantity
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="issuanceDate"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Issued
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="status"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Status
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="ownerName"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Owner
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="retirementBeneficiary"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Beneficiary
+              </SortableTableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bcus.map((bcu) => (
+            {sortedData.map((bcu) => (
               <TableRow
                 key={bcu.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"

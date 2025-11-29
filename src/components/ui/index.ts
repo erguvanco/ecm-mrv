@@ -6,6 +6,7 @@ export { Badge, badgeVariants } from './badge';
 export { Select } from './select';
 export { Textarea } from './textarea';
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from './table';
+export { SortableTableHead } from './sortable-table-head';
 export { Progress } from './progress';
 export { Dialog, DialogPortal, DialogOverlay, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from './dialog';
 export { Spinner } from './spinner';

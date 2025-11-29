@@ -20,9 +20,11 @@ import {
   DialogFooter,
   Spinner,
   EmptyState,
+  SortableTableHead,
 } from '@/components/ui';
 import { Truck } from 'lucide-react';
 import { TRANSPORT_FUEL_TYPES } from '@/lib/validations/transport';
+import { useTableSort } from '@/hooks/use-table-sort';
 
 interface TransportEvent {
   id: string;
@@ -46,6 +48,12 @@ export function TransportTable({ transportEvents }: TransportTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(transportEvents, {
+    key: 'date',
+    direction: 'desc',
+  });
 
   const getFuelTypeLabel = (value: string | null) => {
     if (!value) return '-';
@@ -89,17 +97,52 @@ export function TransportTable({ transportEvents }: TransportTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Distance</TableHead>
-              <TableHead>Vehicle</TableHead>
-              <TableHead>Fuel</TableHead>
-              <TableHead>Cargo</TableHead>
+              <SortableTableHead
+                sortKey="date"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Date
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="distanceKm"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Distance
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="vehicleId"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Vehicle
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="fuelType"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Fuel
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="cargoDescription"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Cargo
+              </SortableTableHead>
               <TableHead>Evidence</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transportEvents.map((event) => (
+            {sortedData.map((event) => (
               <TableRow
                 key={event.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"

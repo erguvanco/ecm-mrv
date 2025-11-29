@@ -131,7 +131,12 @@ export function ProductionWizard({
     },
   });
 
-  // Validate steps when data changes
+  // Watch form values for real-time validation
+  const step1Values = step1Form.watch();
+  const step2Values = step2Form.watch();
+  const step3Values = step3Form.watch();
+
+  // Validate steps when data or form values change
   useEffect(() => {
     const validateSteps = async () => {
       const step1Valid = await step1Form.trigger();
@@ -153,7 +158,7 @@ export function ProductionWizard({
     if (isInitialized) {
       validateSteps();
     }
-  }, [data, isInitialized]);
+  }, [data, isInitialized, step1Values, step2Values, step3Values]);
 
   const handleStepChange = (newIndex: number) => {
     // Save current step data before changing

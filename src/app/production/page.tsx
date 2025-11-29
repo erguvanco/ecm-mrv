@@ -10,7 +10,7 @@ async function getProductionBatches() {
     include: {
       evidence: { select: { id: true } },
       feedstockDelivery: {
-        select: { id: true, date: true, feedstockType: true },
+        select: { id: true, serialNumber: true, date: true, feedstockType: true },
       },
       _count: {
         select: {

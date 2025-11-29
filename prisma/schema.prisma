@@ -12,6 +12,7 @@ datasource db {
 // ============================================
 model FeedstockDelivery {
   id                  String   @id @default(uuid())
+  serialNumber        Int      @unique @default(autoincrement())
   date                DateTime
   vehicleId           String?
   vehicleDescription  String?
@@ -54,6 +55,7 @@ model FeedstockDelivery {
 // ============================================
 model ProductionBatch {
   id                          String   @id @default(uuid())
+  serialNumber                Int      @unique @default(autoincrement())
   productionDate              DateTime
   feedstockDeliveryId         String?
   feedstockDelivery           FeedstockDelivery? @relation(fields: [feedstockDeliveryId], references: [id])
