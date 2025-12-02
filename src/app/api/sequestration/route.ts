@@ -9,7 +9,7 @@ export async function GET() {
       orderBy: { finalDeliveryDate: 'desc' },
       include: {
         evidence: { select: { id: true } },
-        productionBatches: {
+        batches: {
           include: {
             productionBatch: {
               select: {
@@ -24,7 +24,7 @@ export async function GET() {
           select: { id: true, date: true, distanceKm: true },
         },
         _count: {
-          select: { bcus: true },
+          select: { bcuEvents: true },
         },
       },
     });
@@ -32,7 +32,7 @@ export async function GET() {
     // Calculate total quantity for each event
     const eventsWithQuantity = sequestrationEvents.map((event) => ({
       ...event,
-      quantityTonnes: event.productionBatches.reduce(
+      quantityTonnes: event.batches.reduce(
         (sum, pb) => sum + pb.quantityTonnes,
         0
       ),
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       data: {
         ...result.data,
         routeStatus: result.data.destinationLat && result.data.destinationLng ? 'pending' : null,
-        productionBatches: productionBatches
+        batches: productionBatches
           ? {
               create: productionBatches.map(
                 (pb: { productionBatchId: string; quantityTonnes: number }) => ({
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         evidence: true,
-        productionBatches: {
+        batches: {
           include: {
             productionBatch: true,
           },

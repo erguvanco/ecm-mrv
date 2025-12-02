@@ -14,7 +14,7 @@ export async function GET(
       where: { id },
       include: {
         evidence: true,
-        productionBatches: {
+        batches: {
           include: {
             productionBatch: {
               select: {
@@ -26,12 +26,16 @@ export async function GET(
           },
         },
         transportEvents: true,
-        bcus: {
-          select: {
-            id: true,
-            registrySerialNumber: true,
-            status: true,
-            quantityTonnesCO2e: true,
+        bcuEvents: {
+          include: {
+            bcu: {
+              select: {
+                id: true,
+                registrySerialNumber: true,
+                status: true,
+                quantityTonnesCO2e: true,
+              },
+            },
           },
         },
       },
@@ -45,7 +49,7 @@ export async function GET(
     }
 
     // Calculate total quantity
-    const quantityTonnes = sequestrationEvent.productionBatches.reduce(
+    const quantityTonnes = sequestrationEvent.batches.reduce(
       (sum, pb) => sum + pb.quantityTonnes,
       0
     );
@@ -94,7 +98,7 @@ export async function PUT(
     const sequestrationEvent = await db.$transaction(async (tx) => {
       // Delete existing batch links
       await tx.sequestrationBatch.deleteMany({
-        where: { sequestrationEventId: id },
+        where: { sequestrationId: id },
       });
 
       // Update event and create new batch links
@@ -106,7 +110,7 @@ export async function PUT(
           ...(coordsChanged && data.destinationLat && data.destinationLng
             ? { routeStatus: 'pending', routeGeometry: null, routeDistanceKm: null, routeDurationMin: null }
             : {}),
-          productionBatches: productionBatches
+          batches: productionBatches
             ? {
                 create: productionBatches.map(
                   (pb: { productionBatchId: string; quantityTonnes: number }) => ({
@@ -119,7 +123,7 @@ export async function PUT(
         },
         include: {
           evidence: true,
-          productionBatches: {
+          batches: {
             include: {
               productionBatch: true,
             },
