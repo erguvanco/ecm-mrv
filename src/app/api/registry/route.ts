@@ -20,7 +20,7 @@ export async function GET() {
             },
           },
         },
-        productionBatchAllocations: {
+        productionBatches: {
           include: {
             productionBatch: {
               select: {
@@ -66,13 +66,16 @@ export async function POST(request: NextRequest) {
       data: {
         ...result.data,
         registrySerialNumber: serialNumber,
-        sequestrationEventId,
-        productionBatchAllocations: productionBatchAllocations
+        sequestrationEvents: sequestrationEventId
+          ? {
+              create: { sequestrationId: sequestrationEventId },
+            }
+          : undefined,
+        productionBatches: productionBatchAllocations
           ? {
               create: productionBatchAllocations.map(
-                (alloc: { productionBatchId: string; quantityTonnesCO2e: number }) => ({
+                (alloc: { productionBatchId: string }) => ({
                   productionBatchId: alloc.productionBatchId,
-                  quantityTonnesCO2e: alloc.quantityTonnesCO2e,
                 })
               ),
             }

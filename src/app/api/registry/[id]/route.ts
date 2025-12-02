@@ -32,7 +32,7 @@ export async function GET(
             },
           },
         },
-        productionBatchAllocations: {
+        productionBatches: {
           include: {
             productionBatch: {
               select: {
