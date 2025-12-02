@@ -20,15 +20,19 @@ async function getBCU(id: string) {
     where: { id },
     include: {
       evidence: true,
-      sequestrationEvent: {
+      sequestrationEvents: {
         include: {
-          productionBatches: {
+          sequestration: {
             include: {
-              productionBatch: {
-                select: {
-                  id: true,
-                  productionDate: true,
-                  outputBiocharWeightTonnes: true,
+              batches: {
+                include: {
+                  productionBatch: {
+                    select: {
+                      id: true,
+                      productionDate: true,
+                      outputBiocharWeightTonnes: true,
+                    },
+                  },
                 },
               },
             },
@@ -165,63 +169,65 @@ export default async function BCUDetailPage({
           </CardContent>
         </Card>
 
-        {bcu.sequestrationEvent && (
+        {bcu.sequestrationEvents && bcu.sequestrationEvents.length > 0 && (
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle className="text-lg">
-                Linked Sequestration Event
+                Linked Sequestration Events
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <Link
-                href={`/sequestration/${bcu.sequestrationEvent.id}`}
-                className="flex items-center justify-between border p-4 hover:bg-[var(--muted)]"
-              >
-                <div>
-                  <p className="font-medium">
-                    Delivery:{' '}
-                    {format(
-                      new Date(bcu.sequestrationEvent.finalDeliveryDate),
-                      'MMM d, yyyy'
-                    )}
-                  </p>
-                  <p className="text-sm text-[var(--muted-foreground)]">
-                    {bcu.sequestrationEvent.sequestrationType} •{' '}
-                    {bcu.sequestrationEvent.deliveryPostcode}
-                  </p>
-                </div>
-                <Badge variant="outline">
-                  {bcu.sequestrationEvent.productionBatches.length} batch
-                  {bcu.sequestrationEvent.productionBatches.length !== 1
-                    ? 'es'
-                    : ''}
-                </Badge>
-              </Link>
-
-              {bcu.sequestrationEvent.productionBatches.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <p className="text-sm font-medium text-[var(--muted-foreground)]">
-                    Production Batches:
-                  </p>
-                  {bcu.sequestrationEvent.productionBatches.map((pb) => (
-                    <Link
-                      key={pb.id}
-                      href={`/production/${pb.productionBatch.id}`}
-                      className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
-                    >
-                      <span>
+            <CardContent className="space-y-4">
+              {bcu.sequestrationEvents.map((se) => (
+                <div key={se.sequestrationId}>
+                  <Link
+                    href={`/sequestration/${se.sequestration.id}`}
+                    className="flex items-center justify-between border p-4 hover:bg-[var(--muted)]"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        Delivery:{' '}
                         {format(
-                          new Date(pb.productionBatch.productionDate),
+                          new Date(se.sequestration.finalDeliveryDate),
                           'MMM d, yyyy'
                         )}
-                      </span>
-                      <span className="text-[var(--muted-foreground)]">
-                        {pb.quantityTonnes.toFixed(2)} tonnes
-                      </span>
-                    </Link>
-                  ))}
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)]">
+                        {se.sequestration.sequestrationType} •{' '}
+                        {se.sequestration.deliveryPostcode}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {se.sequestration.batches.length} batch
+                      {se.sequestration.batches.length !== 1 ? 'es' : ''}
+                    </Badge>
+                  </Link>
+
+                  {se.sequestration.batches.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm font-medium text-[var(--muted-foreground)]">
+                        Production Batches:
+                      </p>
+                      {se.sequestration.batches.map((pb) => (
+                        <Link
+                          key={pb.productionBatchId}
+                          href={`/production/${pb.productionBatch.id}`}
+                          className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
+                        >
+                          <span>
+                            {format(
+                              new Date(pb.productionBatch.productionDate),
+                              'MMM d, yyyy'
+                            )}
+                          </span>
+                          <span className="text-[var(--muted-foreground)]">
+                            {pb.quantityTonnes.toFixed(2)} tonnes
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </CardContent>
           </Card>
         )}

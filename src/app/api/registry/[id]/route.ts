@@ -13,15 +13,19 @@ export async function GET(
       where: { id },
       include: {
         evidence: true,
-        sequestrationEvent: {
+        sequestrationEvents: {
           include: {
-            productionBatches: {
+            sequestration: {
               include: {
-                productionBatch: {
-                  select: {
-                    id: true,
-                    productionDate: true,
-                    outputBiocharWeightTonnes: true,
+                batches: {
+                  include: {
+                    productionBatch: {
+                      select: {
+                        id: true,
+                        productionDate: true,
+                        outputBiocharWeightTonnes: true,
+                      },
+                    },
                   },
                 },
               },
@@ -79,7 +83,7 @@ export async function PUT(
       data,
       include: {
         evidence: true,
-        sequestrationEvent: true,
+        sequestrationEvents: true,
       },
     });
 

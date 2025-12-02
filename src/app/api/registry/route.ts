@@ -8,12 +8,16 @@ export async function GET() {
       orderBy: { issuanceDate: 'desc' },
       include: {
         evidence: { select: { id: true } },
-        sequestrationEvent: {
-          select: {
-            id: true,
-            finalDeliveryDate: true,
-            sequestrationType: true,
-            deliveryPostcode: true,
+        sequestrationEvents: {
+          include: {
+            sequestration: {
+              select: {
+                id: true,
+                finalDeliveryDate: true,
+                sequestrationType: true,
+                deliveryPostcode: true,
+              },
+            },
           },
         },
         productionBatchAllocations: {
@@ -76,7 +80,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         evidence: true,
-        sequestrationEvent: true,
+        sequestrationEvents: true,
       },
     });
 

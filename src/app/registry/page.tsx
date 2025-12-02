@@ -8,11 +8,15 @@ async function getBCUs() {
   return db.bCU.findMany({
     orderBy: { issuanceDate: 'desc' },
     include: {
-      sequestrationEvent: {
-        select: {
-          id: true,
-          finalDeliveryDate: true,
-          sequestrationType: true,
+      sequestrationEvents: {
+        include: {
+          sequestration: {
+            select: {
+              id: true,
+              finalDeliveryDate: true,
+              sequestrationType: true,
+            },
+          },
         },
       },
     },
