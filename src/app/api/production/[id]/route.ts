@@ -24,11 +24,10 @@ export async function GET(
         energyUsages: true,
         sequestrationBatches: {
           include: {
-            sequestrationEvent: {
+            sequestration: {
               select: {
                 id: true,
-                date: true,
-                quantityTonnes: true,
+                finalDeliveryDate: true,
               },
             },
           },
