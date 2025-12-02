@@ -21,7 +21,7 @@ export interface OnboardingBannerProps {
 }
 
 export function OnboardingBanner({
-  title = 'Welcome to Azalt MRV',
+  title = 'Welcome to ECM MRV',
   description = 'Track your biochar carbon removal in 4 steps',
   steps,
   storageKey = 'dmrv-onboarding-dismissed',

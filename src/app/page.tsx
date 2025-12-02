@@ -155,7 +155,7 @@ export default async function DashboardPage() {
       {/* Onboarding Banner for new users */}
       {isNewUser && (
         <OnboardingBanner
-          title="Welcome to Azalt MRV"
+          title="Welcome to ECM MRV"
           description="Track your biochar carbon removal journey in 4 simple steps"
           steps={onboardingSteps}
         />
