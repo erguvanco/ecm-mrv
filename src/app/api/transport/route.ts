@@ -12,7 +12,7 @@ export async function GET() {
           select: { id: true, date: true, feedstockType: true },
         },
         sequestrationEvent: {
-          select: { id: true, date: true },
+          select: { id: true, finalDeliveryDate: true },
         },
       },
     });
