@@ -20,7 +20,9 @@ model FeedstockDelivery {
   weightTonnes        Float?
   volumeM3            Float?
   feedstockType       String
+  feedstockTypeOther  String?   // Custom type when feedstockType is "other"
   fuelType            String?
+  fuelTypeOther       String?   // Custom type when fuelType is "other"
   fuelAmount          Float?
   notes               String?
   // Location fields for network map
@@ -85,7 +87,9 @@ model ProductionBatch {
 model EnergyUsage {
   id                String   @id @default(uuid())
   scope             String   // production, transport, other
+  scopeOther        String?  // Custom scope when scope is "other"
   energyType        String   // electricity, diesel, gas, propane
+  energyTypeOther   String?  // Custom type when energyType is "other"
   quantity          Float
   unit              String   // kWh, litres, m3
   periodStart       DateTime
@@ -112,6 +116,7 @@ model TransportEvent {
   vehicleDescription    String?
   distanceKm            Float
   fuelType              String?
+  fuelTypeOther         String?   // Custom type when fuelType is "other"
   fuelAmount            Float?
   cargoDescription      String?
   feedstockDeliveryId   String?
@@ -152,6 +157,7 @@ model SequestrationEvent {
   routeCalculatedAt           DateTime? // When route was last calculated
   routeStatus                 String?   // pending, success, failed, no_plant
   sequestrationType           String    // soil, compost, construction, other
+  sequestrationTypeOther      String?   // Custom type when sequestrationType is "other"
   status                      String    @default("draft") // draft, complete
   wizardStep                  Int       @default(1)
   notes                       String?

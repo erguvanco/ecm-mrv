@@ -3,13 +3,30 @@ import { z } from 'zod';
 export const energyUsageSchema = z.object({
   id: z.string().uuid().optional(),
   scope: z.string().min(1, 'Scope is required'),
+  scopeOther: z.string().optional().nullable(),
   energyType: z.string().min(1, 'Energy type is required'),
+  energyTypeOther: z.string().optional().nullable(),
   quantity: z.coerce.number().positive('Quantity must be positive'),
   unit: z.string().min(1, 'Unit is required'),
   periodStart: z.coerce.date(),
   periodEnd: z.coerce.date(),
   productionBatchId: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (data.scope === 'other' && !data.scopeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please specify the scope',
+      path: ['scopeOther'],
+    });
+  }
+  if (data.energyType === 'other' && !data.energyTypeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please specify the energy type',
+      path: ['energyTypeOther'],
+    });
+  }
 });
 
 export const createEnergyUsageSchema = energyUsageSchema.omit({ id: true });

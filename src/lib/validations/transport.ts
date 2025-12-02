@@ -7,11 +7,20 @@ export const transportEventSchema = z.object({
   vehicleDescription: z.string().optional().nullable(),
   distanceKm: z.coerce.number().positive('Distance must be positive'),
   fuelType: z.string().optional().nullable(),
+  fuelTypeOther: z.string().optional().nullable(),
   fuelAmount: z.coerce.number().positive('Fuel amount must be positive').optional().nullable(),
   cargoDescription: z.string().optional().nullable(),
   feedstockDeliveryId: z.string().uuid().optional().nullable(),
   sequestrationEventId: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (data.fuelType === 'other' && !data.fuelTypeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please specify the fuel type',
+      path: ['fuelTypeOther'],
+    });
+  }
 });
 
 export const createTransportEventSchema = transportEventSchema.omit({ id: true });

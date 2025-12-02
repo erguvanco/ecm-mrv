@@ -10,13 +10,30 @@ export const feedstockDeliverySchema = z.object({
   weightTonnes: z.coerce.number().positive('Weight must be positive').optional().nullable(),
   volumeM3: z.coerce.number().positive('Volume must be positive').optional().nullable(),
   feedstockType: z.string().min(1, 'Feedstock type is required'),
+  feedstockTypeOther: z.string().optional().nullable(),
   fuelType: z.string().optional().nullable(),
+  fuelTypeOther: z.string().optional().nullable(),
   fuelAmount: z.coerce.number().positive('Fuel amount must be positive').optional().nullable(),
   notes: z.string().optional().nullable(),
   // Location fields - required for route calculation
   sourceAddress: z.string().min(1, 'Source address is required'),
   sourceLat: z.coerce.number().min(-90).max(90),
   sourceLng: z.coerce.number().min(-180).max(180),
+}).superRefine((data, ctx) => {
+  if (data.feedstockType === 'other' && !data.feedstockTypeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please specify the feedstock type',
+      path: ['feedstockTypeOther'],
+    });
+  }
+  if (data.fuelType === 'other' && !data.fuelTypeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please specify the fuel type',
+      path: ['fuelTypeOther'],
+    });
+  }
 });
 
 export const createFeedstockDeliverySchema = feedstockDeliverySchema.omit({ id: true });

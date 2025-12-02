@@ -488,6 +488,22 @@ export function SequestrationWizard({
                   </p>
                 )}
               </div>
+
+              {step4Form.watch('sequestrationType') === 'other' && (
+                <div className="space-y-2">
+                  <Label htmlFor="sequestrationTypeOther">Please specify *</Label>
+                  <Input
+                    id="sequestrationTypeOther"
+                    {...step4Form.register('sequestrationTypeOther')}
+                    placeholder="Enter sequestration type..."
+                  />
+                  {step4Form.formState.errors.sequestrationTypeOther && (
+                    <p className="text-sm text-red-500">
+                      {step4Form.formState.errors.sequestrationTypeOther.message}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

@@ -43,6 +43,7 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<EnergyUsageInput>({
     resolver: zodResolver(createEnergyUsageSchema),
@@ -121,6 +122,21 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
             )}
           </div>
 
+          {watch('scope') === 'other' && (
+            <div className="space-y-2">
+              <Label htmlFor="scopeOther">Please specify *</Label>
+              <Input
+                id="scopeOther"
+                {...register('scopeOther')}
+                placeholder="Enter scope..."
+                className={errors.scopeOther ? 'border-red-500' : ''}
+              />
+              {errors.scopeOther && (
+                <p className="text-sm text-red-500">{errors.scopeOther.message}</p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="energyType">Energy Type *</Label>
             <Select
@@ -141,6 +157,21 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
               </p>
             )}
           </div>
+
+          {watch('energyType') === 'other' && (
+            <div className="space-y-2">
+              <Label htmlFor="energyTypeOther">Please specify *</Label>
+              <Input
+                id="energyTypeOther"
+                {...register('energyTypeOther')}
+                placeholder="Enter energy type..."
+                className={errors.energyTypeOther ? 'border-red-500' : ''}
+              />
+              {errors.energyTypeOther && (
+                <p className="text-sm text-red-500">{errors.energyTypeOther.message}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="quantity">Quantity *</Label>

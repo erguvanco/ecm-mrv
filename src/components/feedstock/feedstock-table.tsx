@@ -36,6 +36,7 @@ interface FeedstockDelivery {
   volumeM3: number | null;
   deliveryDistanceKm: number;
   vehicleId: string | null;
+  sourceAddress: string | null;
   _count?: {
     productionBatches: number;
     transportEvents: number;
@@ -161,6 +162,14 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
                 Type
               </SortableTableHead>
               <SortableTableHead
+                sortKey="sourceAddress"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Location
+              </SortableTableHead>
+              <SortableTableHead
                 sortKey="weightTonnes"
                 currentSortKey={sortConfig?.key as string}
                 sortDirection={sortConfig?.direction ?? null}
@@ -199,7 +208,7 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
           <TableBody>
             {sortedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-[var(--muted-foreground)]">
+                <TableCell colSpan={10} className="text-center py-8 text-[var(--muted-foreground)]">
                   No deliveries match your search criteria
                 </TableCell>
               </TableRow>
@@ -219,6 +228,9 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
                   <Badge variant="secondary">
                     {getFeedstockTypeLabel(feedstock.feedstockType)}
                   </Badge>
+                </TableCell>
+                <TableCell className="max-w-[200px] truncate" title={feedstock.sourceAddress || undefined}>
+                  {feedstock.sourceAddress || '-'}
                 </TableCell>
                 <TableCell>
                   {feedstock.weightTonnes

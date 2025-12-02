@@ -41,6 +41,7 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<TransportEventInput>({
     resolver: zodResolver(createTransportEventSchema),
@@ -170,6 +171,21 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
               ))}
             </Select>
           </div>
+
+          {watch('fuelType') === 'other' && (
+            <div className="space-y-2">
+              <Label htmlFor="fuelTypeOther">Please specify *</Label>
+              <Input
+                id="fuelTypeOther"
+                {...register('fuelTypeOther')}
+                placeholder="Enter fuel type..."
+                className={errors.fuelTypeOther ? 'border-red-500' : ''}
+              />
+              {errors.fuelTypeOther && (
+                <p className="text-sm text-red-500">{errors.fuelTypeOther.message}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="fuelAmount">Fuel Amount (liters)</Label>

@@ -15,9 +15,18 @@ export const sequestrationEventSchema = z.object({
   destinationLat: z.coerce.number().min(-90).max(90).optional().nullable(),
   destinationLng: z.coerce.number().min(-180).max(180).optional().nullable(),
   sequestrationType: z.string().min(1, 'Sequestration type is required'),
+  sequestrationTypeOther: z.string().optional().nullable(),
   status: z.enum(['draft', 'complete']).default('draft'),
   wizardStep: z.number().int().min(1).max(6).default(1),
   notes: z.string().optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (data.sequestrationType === 'other' && !data.sequestrationTypeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please specify the sequestration type',
+      path: ['sequestrationTypeOther'],
+    });
+  }
 });
 
 export const createSequestrationEventSchema = sequestrationEventSchema.omit({ id: true });
@@ -48,6 +57,15 @@ export const sequestrationStep4Schema = z.object({
   destinationLat: z.coerce.number().min(-90).max(90).optional().nullable(),
   destinationLng: z.coerce.number().min(-180).max(180).optional().nullable(),
   sequestrationType: z.string().min(1, 'Sequestration type is required'),
+  sequestrationTypeOther: z.string().optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (data.sequestrationType === 'other' && !data.sequestrationTypeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please specify the sequestration type',
+      path: ['sequestrationTypeOther'],
+    });
+  }
 });
 
 export const sequestrationStep5Schema = z.object({

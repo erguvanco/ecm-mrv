@@ -50,6 +50,7 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FeedstockDeliveryInput>({
     resolver: zodResolver(createFeedstockDeliverySchema),
@@ -159,6 +160,23 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
             )}
           </div>
 
+          {watch('feedstockType') === 'other' && (
+            <div className="space-y-2">
+              <Label htmlFor="feedstockTypeOther">Please specify *</Label>
+              <Input
+                id="feedstockTypeOther"
+                {...register('feedstockTypeOther')}
+                placeholder="Enter feedstock type..."
+                className={errors.feedstockTypeOther ? 'border-red-500' : ''}
+              />
+              {errors.feedstockTypeOther && (
+                <p className="text-sm text-red-500">
+                  {errors.feedstockTypeOther.message}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="weightTonnes">Weight (tonnes)</Label>
             <Input
@@ -255,6 +273,23 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
               ))}
             </Select>
           </div>
+
+          {watch('fuelType') === 'other' && (
+            <div className="space-y-2">
+              <Label htmlFor="fuelTypeOther">Please specify *</Label>
+              <Input
+                id="fuelTypeOther"
+                {...register('fuelTypeOther')}
+                placeholder="Enter fuel type..."
+                className={errors.fuelTypeOther ? 'border-red-500' : ''}
+              />
+              {errors.fuelTypeOther && (
+                <p className="text-sm text-red-500">
+                  {errors.fuelTypeOther.message}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="fuelAmount">Fuel Amount (liters)</Label>
