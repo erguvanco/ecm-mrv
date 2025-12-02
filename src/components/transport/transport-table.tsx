@@ -28,15 +28,15 @@ import { useTableSort } from '@/hooks/use-table-sort';
 
 interface TransportEvent {
   id: string;
-  date: string;
+  date: string | Date;
   vehicleId: string | null;
   vehicleDescription: string | null;
   distanceKm: number;
   fuelType: string | null;
   fuelAmount: number | null;
   cargoDescription: string | null;
-  feedstockDelivery?: { id: string; date: string; feedstockType: string } | null;
-  sequestrationEvent?: { id: string; finalDeliveryDate: string } | null;
+  feedstockDelivery?: { id: string; date: string | Date; feedstockType: string } | null;
+  sequestrationEvent?: { id: string; finalDeliveryDate: string | Date } | null;
   evidence?: Array<{ id: string }>;
 }
 

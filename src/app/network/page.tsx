@@ -22,7 +22,7 @@ const NetworkMap = dynamic(
 
 interface MapData {
   plant: {
-    name: string;
+    plantName: string;
     lat: number | null;
     lng: number | null;
     address: string | null;
@@ -184,7 +184,7 @@ export default function NetworkPage() {
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl font-semibold">{mapData?.plant.name}</p>
+                <p className="text-2xl font-semibold">{mapData?.plant.plantName}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">Plant</p>
               </CardContent>
             </Card>

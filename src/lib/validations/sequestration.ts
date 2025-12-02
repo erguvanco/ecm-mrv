@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-export const sequestrationEventSchema = z.object({
+// Base schema without superRefine for use with .omit() and .partial()
+const sequestrationEventBaseSchema = z.object({
   id: z.string().uuid().optional(),
   storageBeforeDelivery: z.boolean().default(false),
   storageLocation: z.string().optional().nullable(),
@@ -19,7 +20,10 @@ export const sequestrationEventSchema = z.object({
   status: z.enum(['draft', 'complete']).default('draft'),
   wizardStep: z.number().int().min(1).max(6).default(1),
   notes: z.string().optional().nullable(),
-}).superRefine((data, ctx) => {
+});
+
+// Refinement for conditional validation
+const sequestrationRefinement = (data: z.infer<typeof sequestrationEventBaseSchema>, ctx: z.RefinementCtx) => {
   if (data.sequestrationType === 'other' && !data.sequestrationTypeOther?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -27,11 +31,13 @@ export const sequestrationEventSchema = z.object({
       path: ['sequestrationTypeOther'],
     });
   }
-});
+};
 
-export const createSequestrationEventSchema = sequestrationEventSchema.omit({ id: true });
+export const sequestrationEventSchema = sequestrationEventBaseSchema.superRefine(sequestrationRefinement);
 
-export const updateSequestrationEventSchema = sequestrationEventSchema.partial().required({ id: true });
+export const createSequestrationEventSchema = sequestrationEventBaseSchema.omit({ id: true }).superRefine(sequestrationRefinement);
+
+export const updateSequestrationEventSchema = sequestrationEventBaseSchema.partial().required({ id: true });
 
 // Wizard step validation schemas
 export const sequestrationStep1Schema = z.object({

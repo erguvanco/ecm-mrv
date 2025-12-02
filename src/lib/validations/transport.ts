@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-export const transportEventSchema = z.object({
+// Base schema without superRefine for use with .omit() and .partial()
+const transportEventBaseSchema = z.object({
   id: z.string().uuid().optional(),
   date: z.coerce.date(),
   vehicleId: z.string().optional().nullable(),
@@ -13,7 +14,10 @@ export const transportEventSchema = z.object({
   feedstockDeliveryId: z.string().uuid().optional().nullable(),
   sequestrationEventId: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
-}).superRefine((data, ctx) => {
+});
+
+// Refinement for conditional validation
+const transportRefinement = (data: z.infer<typeof transportEventBaseSchema>, ctx: z.RefinementCtx) => {
   if (data.fuelType === 'other' && !data.fuelTypeOther?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -21,11 +25,13 @@ export const transportEventSchema = z.object({
       path: ['fuelTypeOther'],
     });
   }
-});
+};
 
-export const createTransportEventSchema = transportEventSchema.omit({ id: true });
+export const transportEventSchema = transportEventBaseSchema.superRefine(transportRefinement);
 
-export const updateTransportEventSchema = transportEventSchema.partial().required({ id: true });
+export const createTransportEventSchema = transportEventBaseSchema.omit({ id: true }).superRefine(transportRefinement);
+
+export const updateTransportEventSchema = transportEventBaseSchema.partial().required({ id: true });
 
 export type TransportEventInput = z.infer<typeof createTransportEventSchema>;
 export type TransportEventUpdate = z.infer<typeof updateTransportEventSchema>;

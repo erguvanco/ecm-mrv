@@ -30,16 +30,18 @@ interface BCU {
   id: string;
   registrySerialNumber: string;
   quantityTonnesCO2e: number;
-  issuanceDate: string;
+  issuanceDate: string | Date;
   status: string;
   ownerName: string | null;
-  retirementDate: string | null;
+  retirementDate: string | Date | null;
   retirementBeneficiary: string | null;
-  sequestrationEvent?: {
-    id: string;
-    finalDeliveryDate: string;
-    sequestrationType: string;
-  } | null;
+  sequestrationEvents?: Array<{
+    sequestration: {
+      id: string;
+      finalDeliveryDate: string | Date;
+      sequestrationType: string;
+    };
+  }>;
 }
 
 interface BCUTableProps {

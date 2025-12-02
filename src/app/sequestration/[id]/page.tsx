@@ -203,7 +203,7 @@ export default async function SequestrationDetailPage({
               <div className="grid gap-2">
                 {event.batches.map((pb) => (
                   <Link
-                    key={pb.id}
+                    key={pb.productionBatchId}
                     href={`/production/${pb.productionBatch.id}`}
                     className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
                   >

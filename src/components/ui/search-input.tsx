@@ -21,7 +21,7 @@ export function SearchInput({
   ...props
 }: SearchInputProps) {
   const [internalValue, setInternalValue] = React.useState(controlledValue || '');
-  const timeoutRef = React.useRef<NodeJS.Timeout>();
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Sync with controlled value
   React.useEffect(() => {

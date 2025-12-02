@@ -43,11 +43,15 @@ export function IssueBCUForm({ sequestrationOptions }: IssueBCUFormProps) {
     handleSubmit,
     setValue,
     formState: { errors },
-  } = useForm<BCUInput>({
+  } = useForm({
     resolver: zodResolver(createBCUSchema),
     defaultValues: {
       issuanceDate: new Date().toISOString().split('T')[0],
-      status: 'issued',
+      status: 'issued' as const,
+      registrySerialNumber: '',
+      quantityTonnesCO2e: 0,
+      ownerName: '',
+      notes: '',
     },
   });
 
@@ -97,7 +101,7 @@ export function IssueBCUForm({ sequestrationOptions }: IssueBCUFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl">
+    <form onSubmit={handleSubmit(onSubmit as unknown as Parameters<typeof handleSubmit>[0])} className="space-y-6 max-w-2xl">
       {error && (
         <div className="bg-red-50 p-4 text-red-700 border border-red-200">
           {error}

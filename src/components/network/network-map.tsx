@@ -8,7 +8,7 @@ import { Factory, Leaf, ArrowDownToLine } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface PlantData {
-  name: string;
+  plantName: string;
   lat: number | null;
   lng: number | null;
   address: string | null;
@@ -341,7 +341,7 @@ export function NetworkMap({
             <div className="p-1 min-w-[180px]">
               {popupInfo.type === 'plant' && (
                 <div>
-                  <p className="font-medium text-sm">{(popupInfo.data as PlantData).name}</p>
+                  <p className="font-medium text-sm">{(popupInfo.data as PlantData).plantName}</p>
                   {(popupInfo.data as PlantData).address && (
                     <p className="text-xs text-[var(--muted-foreground)] mt-1">
                       {(popupInfo.data as PlantData).address}

@@ -7,7 +7,7 @@ async function getSequestrationOptions() {
     where: { status: 'complete' },
     orderBy: { finalDeliveryDate: 'desc' },
     include: {
-      productionBatches: {
+      batches: {
         select: { quantityTonnes: true },
       },
     },
@@ -17,8 +17,8 @@ async function getSequestrationOptions() {
     id: event.id,
     finalDeliveryDate: event.finalDeliveryDate.toISOString(),
     sequestrationType: event.sequestrationType,
-    quantityTonnes: event.productionBatches.reduce(
-      (sum, pb) => sum + pb.quantityTonnes,
+    quantityTonnes: event.batches.reduce(
+      (sum: number, pb: { quantityTonnes: number }) => sum + pb.quantityTonnes,
       0
     ),
   }));

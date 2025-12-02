@@ -21,7 +21,7 @@ const NetworkMap = dynamic(
 
 interface MapData {
   plant: {
-    name: string;
+    plantName: string;
     lat: number | null;
     lng: number | null;
     address: string | null;

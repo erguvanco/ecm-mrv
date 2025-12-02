@@ -52,7 +52,7 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<FeedstockDeliveryInput>({
+  } = useForm({
     resolver: zodResolver(createFeedstockDeliverySchema),
     defaultValues: initialData
       ? {
@@ -63,6 +63,20 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
         }
       : {
           date: new Date().toISOString().split('T')[0],
+          feedstockType: '',
+          feedstockTypeOther: '',
+          vehicleId: '',
+          vehicleDescription: '',
+          deliveryDistanceKm: 0,
+          weightTonnes: null,
+          volumeM3: null,
+          fuelType: '',
+          fuelTypeOther: '',
+          fuelAmount: null,
+          notes: '',
+          sourceAddress: '',
+          sourceLat: 0,
+          sourceLng: 0,
         },
   });
 
@@ -73,9 +87,9 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
       setValue('sourceLat', result.coordinates[1]);
       setValue('sourceLng', result.coordinates[0]);
     } else {
-      setValue('sourceAddress', null);
-      setValue('sourceLat', null);
-      setValue('sourceLng', null);
+      setValue('sourceAddress', '' as unknown as string);
+      setValue('sourceLat', 0);
+      setValue('sourceLng', 0);
     }
   };
 
@@ -111,7 +125,7 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit as unknown as Parameters<typeof handleSubmit>[0])} className="space-y-6">
       {error && (
         <div className="bg-red-50 p-4 text-red-700 border border-red-200">
           {error}

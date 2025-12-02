@@ -29,7 +29,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 interface ProductionBatch {
   id: string;
   serialNumber: number;
-  productionDate: string;
+  productionDate: string | Date;
   inputFeedstockWeightTonnes: number;
   outputBiocharWeightTonnes: number;
   status: string;
@@ -37,7 +37,7 @@ interface ProductionBatch {
   feedstockDelivery?: {
     id: string;
     serialNumber: number;
-    date: string;
+    date: string | Date;
     feedstockType: string;
   } | null;
   evidence?: Array<{ id: string }>;

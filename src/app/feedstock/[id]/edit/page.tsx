@@ -43,9 +43,14 @@ export default async function EditFeedstockPage({
           weightTonnes: feedstock.weightTonnes,
           volumeM3: feedstock.volumeM3,
           feedstockType: feedstock.feedstockType,
+          feedstockTypeOther: feedstock.feedstockTypeOther,
           fuelType: feedstock.fuelType,
+          fuelTypeOther: feedstock.fuelTypeOther,
           fuelAmount: feedstock.fuelAmount,
           notes: feedstock.notes,
+          sourceAddress: feedstock.sourceAddress || '',
+          sourceLat: feedstock.sourceLat || 0,
+          sourceLng: feedstock.sourceLng || 0,
         }}
       />
     </PageContainer>

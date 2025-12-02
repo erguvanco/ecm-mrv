@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-export const feedstockDeliverySchema = z.object({
+// Base schema without superRefine for use with .omit() and .partial()
+const feedstockDeliveryBaseSchema = z.object({
   id: z.string().uuid().optional(),
   date: z.coerce.date(),
   vehicleId: z.string().optional().nullable(),
@@ -19,7 +20,10 @@ export const feedstockDeliverySchema = z.object({
   sourceAddress: z.string().min(1, 'Source address is required'),
   sourceLat: z.coerce.number().min(-90).max(90),
   sourceLng: z.coerce.number().min(-180).max(180),
-}).superRefine((data, ctx) => {
+});
+
+// Refinement for conditional validation
+const feedstockRefinement = (data: z.infer<typeof feedstockDeliveryBaseSchema>, ctx: z.RefinementCtx) => {
   if (data.feedstockType === 'other' && !data.feedstockTypeOther?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -34,11 +38,13 @@ export const feedstockDeliverySchema = z.object({
       path: ['fuelTypeOther'],
     });
   }
-});
+};
 
-export const createFeedstockDeliverySchema = feedstockDeliverySchema.omit({ id: true });
+export const feedstockDeliverySchema = feedstockDeliveryBaseSchema.superRefine(feedstockRefinement);
 
-export const updateFeedstockDeliverySchema = feedstockDeliverySchema.partial().required({ id: true });
+export const createFeedstockDeliverySchema = feedstockDeliveryBaseSchema.omit({ id: true }).superRefine(feedstockRefinement);
+
+export const updateFeedstockDeliverySchema = feedstockDeliveryBaseSchema.partial().required({ id: true });
 
 export type FeedstockDeliveryInput = z.infer<typeof createFeedstockDeliverySchema>;
 export type FeedstockDeliveryUpdate = z.infer<typeof updateFeedstockDeliverySchema>;

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-export const energyUsageSchema = z.object({
+// Base schema without superRefine for use with .omit() and .partial()
+const energyUsageBaseSchema = z.object({
   id: z.string().uuid().optional(),
   scope: z.string().min(1, 'Scope is required'),
   scopeOther: z.string().optional().nullable(),
@@ -12,7 +13,10 @@ export const energyUsageSchema = z.object({
   periodEnd: z.coerce.date(),
   productionBatchId: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
-}).superRefine((data, ctx) => {
+});
+
+// Refinement for conditional validation
+const energyRefinement = (data: z.infer<typeof energyUsageBaseSchema>, ctx: z.RefinementCtx) => {
   if (data.scope === 'other' && !data.scopeOther?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -27,11 +31,13 @@ export const energyUsageSchema = z.object({
       path: ['energyTypeOther'],
     });
   }
-});
+};
 
-export const createEnergyUsageSchema = energyUsageSchema.omit({ id: true });
+export const energyUsageSchema = energyUsageBaseSchema.superRefine(energyRefinement);
 
-export const updateEnergyUsageSchema = energyUsageSchema.partial().required({ id: true });
+export const createEnergyUsageSchema = energyUsageBaseSchema.omit({ id: true }).superRefine(energyRefinement);
+
+export const updateEnergyUsageSchema = energyUsageBaseSchema.partial().required({ id: true });
 
 export type EnergyUsageInput = z.infer<typeof createEnergyUsageSchema>;
 export type EnergyUsageUpdate = z.infer<typeof updateEnergyUsageSchema>;

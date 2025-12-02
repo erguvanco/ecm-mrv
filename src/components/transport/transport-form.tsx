@@ -43,7 +43,7 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<TransportEventInput>({
+  } = useForm({
     resolver: zodResolver(createTransportEventSchema),
     defaultValues: initialData
       ? {
@@ -52,6 +52,16 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
         }
       : {
           date: formatDateForInput(new Date()),
+          distanceKm: 0,
+          vehicleId: '',
+          vehicleDescription: '',
+          fuelType: '',
+          fuelTypeOther: '',
+          fuelAmount: null,
+          cargoDescription: '',
+          feedstockDeliveryId: '',
+          sequestrationEventId: '',
+          notes: '',
         },
   });
 
@@ -87,7 +97,7 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit as unknown as Parameters<typeof handleSubmit>[0])} className="space-y-6">
       {error && (
         <div className="bg-red-50 p-4 text-red-700 border border-red-200">
           {error}

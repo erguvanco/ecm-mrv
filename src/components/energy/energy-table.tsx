@@ -32,9 +32,9 @@ interface EnergyUsage {
   energyType: string;
   quantity: number;
   unit: string;
-  periodStart: string;
-  periodEnd: string;
-  productionBatch?: { id: string; productionDate: string } | null;
+  periodStart: string | Date;
+  periodEnd: string | Date;
+  productionBatch?: { id: string; productionDate: string | Date } | null;
   evidence?: Array<{ id: string }>;
 }
 

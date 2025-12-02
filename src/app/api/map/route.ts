@@ -88,7 +88,7 @@ export async function GET() {
 
     return NextResponse.json({
       plant: {
-        name: plant.plantName,
+        plantName: plant.plantName,
         lat: plant.lat,
         lng: plant.lng,
         address: plant.address,

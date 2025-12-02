@@ -45,7 +45,7 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<EnergyUsageInput>({
+  } = useForm({
     resolver: zodResolver(createEnergyUsageSchema),
     defaultValues: initialData
       ? {
@@ -54,8 +54,16 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
           periodEnd: formatDateForInput(initialData.periodEnd),
         }
       : {
+          scope: '',
+          scopeOther: '',
+          energyType: '',
+          energyTypeOther: '',
+          quantity: 0,
+          unit: '',
           periodStart: formatDateForInput(new Date()),
           periodEnd: formatDateForInput(new Date()),
+          productionBatchId: '',
+          notes: '',
         },
   });
 
@@ -91,7 +99,7 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit as unknown as Parameters<typeof handleSubmit>[0])} className="space-y-6">
       {error && (
         <div className="bg-red-50 p-4 text-red-700 border border-red-200">
           {error}

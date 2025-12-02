@@ -35,7 +35,7 @@ import {
 
 interface ProductionBatchOption {
   id: string;
-  productionDate: string;
+  productionDate: string | Date;
   outputBiocharWeightTonnes: number;
 }
 
@@ -51,6 +51,7 @@ interface SequestrationWizardProps {
 }
 
 export interface SequestrationWizardData {
+  [key: string]: unknown;
   storageBeforeDelivery?: boolean;
   storageLocation?: string | null;
   storageStartDate?: Date | string | null;
@@ -149,6 +150,7 @@ export function SequestrationWizard({
       deliveryVehicleDescription: data.deliveryVehicleDescription || '',
       deliveryPostcode: data.deliveryPostcode || '',
       sequestrationType: data.sequestrationType || '',
+      sequestrationTypeOther: '',
     },
   });
 

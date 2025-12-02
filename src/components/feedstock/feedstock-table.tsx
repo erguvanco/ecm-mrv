@@ -30,7 +30,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 interface FeedstockDelivery {
   id: string;
   serialNumber: number;
-  date: string;
+  date: string | Date;
   feedstockType: string;
   weightTonnes: number | null;
   volumeM3: number | null;

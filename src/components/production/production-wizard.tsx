@@ -33,7 +33,7 @@ import {
 
 interface FeedstockOption {
   id: string;
-  date: string;
+  date: string | Date;
   feedstockType: string;
   weightTonnes: number | null;
 }
@@ -45,6 +45,7 @@ interface ProductionWizardProps {
 }
 
 export interface ProductionWizardData {
+  [key: string]: unknown;
   productionDate?: Date | string;
   feedstockDeliveryId?: string | null;
   inputFeedstockWeightTonnes?: number;

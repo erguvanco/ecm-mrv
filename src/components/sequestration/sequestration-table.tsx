@@ -29,7 +29,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 
 interface SequestrationEvent {
   id: string;
-  finalDeliveryDate: string;
+  finalDeliveryDate: string | Date;
   sequestrationType: string;
   deliveryPostcode: string;
   storageBeforeDelivery: boolean;
@@ -42,7 +42,7 @@ interface SequestrationEvent {
     quantityTonnes: number;
     productionBatch: {
       id: string;
-      productionDate: string;
+      productionDate: string | Date;
     };
   }>;
   evidence?: Array<{ id: string }>;

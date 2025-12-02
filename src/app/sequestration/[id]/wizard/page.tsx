@@ -7,7 +7,7 @@ async function getSequestrationEvent(id: string) {
   return db.sequestrationEvent.findUnique({
     where: { id },
     include: {
-      productionBatches: true,
+      batches: true,
     },
   });
 }
@@ -55,7 +55,7 @@ export default async function SequestrationWizardPage({
           storageEndDate: event.storageEndDate,
           storageContainerIds: event.storageContainerIds,
           storageConditions: event.storageConditions,
-          productionBatches: event.productionBatches.map((pb) => ({
+          productionBatches: event.batches.map((pb) => ({
             productionBatchId: pb.productionBatchId,
             quantityTonnes: pb.quantityTonnes,
           })),
