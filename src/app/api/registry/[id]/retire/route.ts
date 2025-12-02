@@ -45,7 +45,7 @@ export async function POST(
       },
       include: {
         evidence: true,
-        sequestrationEvent: true,
+        sequestrationEvents: true,
       },
     });
 
