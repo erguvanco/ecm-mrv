@@ -50,7 +50,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const result = createProductionBatchSchema.safeParse(body);
+    const { evidenceByAllocation, outputEvidence, temperatureEvidence, ...restBody } = body;
+    const result = createProductionBatchSchema.safeParse(restBody);
 
     if (!result.success) {
       return NextResponse.json(
@@ -87,6 +88,76 @@ export async function POST(request: NextRequest) {
               ? (deliveryWeightMap.get(allocation.feedstockDeliveryId)! * allocation.percentageUsed) / 100
               : null,
           })),
+        });
+      }
+
+      // Create evidence files if provided
+      const evidenceRecords: Array<{
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        mimeType: string;
+        storagePath: string;
+        category: string;
+        productionBatchId: string;
+      }> = [];
+
+      // Add feedstock allocation evidence
+      if (evidenceByAllocation && typeof evidenceByAllocation === 'object') {
+        for (const [, files] of Object.entries(evidenceByAllocation)) {
+          if (Array.isArray(files)) {
+            for (const file of files) {
+              const f = file as { fileName: string; fileSize: number; mimeType: string; category: string };
+              evidenceRecords.push({
+                fileName: f.fileName,
+                fileType: f.mimeType.includes('pdf') ? 'pdf' : f.mimeType.includes('image') ? 'image' : 'other',
+                fileSize: f.fileSize,
+                mimeType: f.mimeType,
+                storagePath: `/uploads/production/${batch.id}/feedstock/${f.fileName}`,
+                category: f.category,
+                productionBatchId: batch.id,
+              });
+            }
+          }
+        }
+      }
+
+      // Add output biochar evidence
+      if (outputEvidence && Array.isArray(outputEvidence)) {
+        for (const file of outputEvidence) {
+          const f = file as { fileName: string; fileSize: number; mimeType: string; category: string };
+          evidenceRecords.push({
+            fileName: f.fileName,
+            fileType: f.mimeType.includes('pdf') ? 'pdf' : f.mimeType.includes('image') ? 'image' : 'other',
+            fileSize: f.fileSize,
+            mimeType: f.mimeType,
+            storagePath: `/uploads/production/${batch.id}/output/${f.fileName}`,
+            category: f.category || 'biochar_out',
+            productionBatchId: batch.id,
+          });
+        }
+      }
+
+      // Add temperature evidence
+      if (temperatureEvidence && Array.isArray(temperatureEvidence)) {
+        for (const file of temperatureEvidence) {
+          const f = file as { fileName: string; fileSize: number; mimeType: string; category: string };
+          evidenceRecords.push({
+            fileName: f.fileName,
+            fileType: f.mimeType.includes('pdf') ? 'pdf' : f.mimeType.includes('image') ? 'image' : 'other',
+            fileSize: f.fileSize,
+            mimeType: f.mimeType,
+            storagePath: `/uploads/production/${batch.id}/temperature/${f.fileName}`,
+            category: f.category || 'temperature_log',
+            productionBatchId: batch.id,
+          });
+        }
+      }
+
+      // Create all evidence records
+      if (evidenceRecords.length > 0) {
+        await tx.evidenceFile.createMany({
+          data: evidenceRecords,
         });
       }
 

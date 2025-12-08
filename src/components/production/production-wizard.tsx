@@ -34,12 +34,33 @@ import {
   FeedstockAllocation,
 } from '@/lib/validations/production';
 import { FEEDSTOCK_TYPES } from '@/lib/validations/feedstock';
-import { Plus, X, ChevronDown, Paperclip } from 'lucide-react';
+import { Plus, X, ChevronDown, Paperclip, Calendar, Scale, Thermometer, FileText, Package, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+
+// Legacy feedstock type mappings for older database records
+const LEGACY_FEEDSTOCK_LABELS: Record<string, string> = {
+  agricultural_residue: 'Agricultural Residue',
+  forestry_residue: 'Forestry Residue',
+  energy_crops: 'Energy Crops',
+  organic_waste: 'Organic Waste',
+  animal_residue: 'Animal Residue',
+  waste_oil: 'Waste Oil',
+  wood: 'Wood',
+};
 
 // Helper to get human-readable feedstock type label
 const getFeedstockTypeLabel = (value: string): string => {
+  // Check specific feedstock types first
   const type = FEEDSTOCK_TYPES.find(t => t.value === value);
-  return type?.label || value;
+  if (type) return type.label;
+
+  // Check legacy/generic types
+  if (LEGACY_FEEDSTOCK_LABELS[value]) return LEGACY_FEEDSTOCK_LABELS[value];
+
+  // Format snake_case to Title Case as fallback
+  return value
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 interface FeedstockOption {
@@ -106,6 +127,14 @@ export function ProductionWizard({
 
   // Evidence files per allocation (keyed by feedstockDeliveryId)
   const [allocationEvidence, setAllocationEvidence] = useState<Record<string, UploadedFile[]>>({});
+
+  // Evidence files for output biochar
+  const [outputEvidence, setOutputEvidence] = useState<UploadedFile[]>([]);
+  const [showOutputEvidence, setShowOutputEvidence] = useState(false);
+
+  // Evidence files for temperature
+  const [temperatureEvidence, setTemperatureEvidence] = useState<UploadedFile[]>([]);
+  const [showTemperatureEvidence, setShowTemperatureEvidence] = useState(false);
 
   // Track which allocation's evidence section is expanded
   const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null);
@@ -227,9 +256,9 @@ export function ProductionWizard({
     // Step 1 is valid if date is set and at least one feedstock is allocated
     const step1Valid = !!productionDateValue && allocations.length > 0;
 
-    // Step 2 is valid if output weight is positive AND less than or equal to input weight
+    // Step 2 is valid if output weight is positive (warning shown if exceeds input, but allowed)
     const outputWeight = Number(outputBiocharValue) || 0;
-    const step2Valid = outputWeight > 0 && outputWeight <= currentInputWeight;
+    const step2Valid = outputWeight > 0;
 
     const prev = prevValidationRef.current;
 
@@ -289,6 +318,45 @@ export function ProductionWizard({
     // Calculate input weight from allocations
     const inputWeight = calculateTotalAllocatedWeight();
 
+    // Prepare evidence files metadata per allocation
+    const evidenceByAllocation: Record<string, Array<{
+      fileName: string;
+      fileSize: number;
+      mimeType: string;
+      category: string;
+    }>> = {};
+
+    for (const [feedstockId, files] of Object.entries(allocationEvidence)) {
+      if (files.length > 0) {
+        evidenceByAllocation[feedstockId] = files.map(f => ({
+          fileName: f.fileName,
+          fileSize: f.fileSize,
+          mimeType: f.mimeType,
+          category: f.category,
+        }));
+      }
+    }
+
+    // Prepare output evidence files
+    const outputEvidenceMetadata = outputEvidence.length > 0
+      ? outputEvidence.map(f => ({
+          fileName: f.fileName,
+          fileSize: f.fileSize,
+          mimeType: f.mimeType,
+          category: f.category,
+        }))
+      : undefined;
+
+    // Prepare temperature evidence files
+    const temperatureEvidenceMetadata = temperatureEvidence.length > 0
+      ? temperatureEvidence.map(f => ({
+          fileName: f.fileName,
+          fileSize: f.fileSize,
+          mimeType: f.mimeType,
+          category: f.category,
+        }))
+      : undefined;
+
     // Collect all data
     const step4Data = step4Form.getValues();
     const finalData = {
@@ -298,6 +366,9 @@ export function ProductionWizard({
       notes: step4Data.notes || null,
       status: 'complete',
       wizardStep: 4,
+      evidenceByAllocation: Object.keys(evidenceByAllocation).length > 0 ? evidenceByAllocation : undefined,
+      outputEvidence: outputEvidenceMetadata,
+      temperatureEvidence: temperatureEvidenceMetadata,
     };
 
     setIsSubmitting(true);
@@ -512,7 +583,6 @@ export function ProductionWizard({
                 id="outputBiocharWeightTonnes"
                 type="number"
                 step="0.01"
-                max={inputWeight}
                 {...step2Form.register('outputBiocharWeightTonnes')}
               />
               {step2Form.formState.errors.outputBiocharWeightTonnes && (
@@ -521,8 +591,8 @@ export function ProductionWizard({
                 </p>
               )}
               {exceedsInput && (
-                <p className="text-sm text-red-500">
-                  Output weight cannot exceed input weight ({inputWeight.toFixed(2)} tonnes)
+                <p className="text-sm text-amber-600">
+                  ⚠️ Output weight ({outputValue.toFixed(2)}t) exceeds input feedstock weight ({inputWeight.toFixed(2)}t). Please verify this is correct.
                 </p>
               )}
             </div>
@@ -532,6 +602,34 @@ export function ProductionWizard({
                 conversion rates are 20-30%.
               </p>
             )}
+
+            {/* Evidence upload toggle */}
+            <div className="pt-2 border-t border-[var(--border)]">
+              <button
+                type="button"
+                onClick={() => setShowOutputEvidence(!showOutputEvidence)}
+                className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <Paperclip className="h-3 w-3" />
+                <span>
+                  {outputEvidence.length > 0
+                    ? `${outputEvidence.length} evidence file${outputEvidence.length > 1 ? 's' : ''}`
+                    : 'Add output evidence (optional)'}
+                </span>
+                <ChevronDown className={`h-3 w-3 transition-transform ${showOutputEvidence ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Evidence upload section */}
+              {showOutputEvidence && (
+                <div className="mt-3">
+                  <FileUpload
+                    files={outputEvidence}
+                    onChange={setOutputEvidence}
+                    maxFiles={5}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -570,14 +668,58 @@ export function ProductionWizard({
                 />
               </div>
             </div>
+
+            {/* Evidence upload toggle */}
+            <div className="pt-2 border-t border-[var(--border)]">
+              <button
+                type="button"
+                onClick={() => setShowTemperatureEvidence(!showTemperatureEvidence)}
+                className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <Paperclip className="h-3 w-3" />
+                <span>
+                  {temperatureEvidence.length > 0
+                    ? `${temperatureEvidence.length} evidence file${temperatureEvidence.length > 1 ? 's' : ''}`
+                    : 'Add temperature log evidence (optional)'}
+                </span>
+                <ChevronDown className={`h-3 w-3 transition-transform ${showTemperatureEvidence ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Evidence upload section */}
+              {showTemperatureEvidence && (
+                <div className="mt-3">
+                  <FileUpload
+                    files={temperatureEvidence}
+                    onChange={setTemperatureEvidence}
+                    maxFiles={5}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         );
 
       case 3:
+        // Calculate conversion rate and determine color
+        const conversionRate = inputWeight > 0 && data.outputBiocharWeightTonnes
+          ? (Number(data.outputBiocharWeightTonnes) / inputWeight) * 100
+          : 0;
+        const getConversionRateColor = (rate: number) => {
+          if (rate > 100) return 'text-red-600 bg-red-50 border-red-200';
+          if (rate >= 20 && rate <= 35) return 'text-green-600 bg-green-50 border-green-200';
+          if (rate >= 15 && rate <= 40) return 'text-amber-600 bg-amber-50 border-amber-200';
+          return 'text-[var(--muted-foreground)] bg-[var(--muted)]/30 border-[var(--border)]';
+        };
+
+        // Count total evidence files
+        const totalFeedstockEvidence = Object.values(allocationEvidence).reduce((sum, files) => sum + files.length, 0);
+        const totalEvidence = totalFeedstockEvidence + outputEvidence.length + temperatureEvidence.length;
+
         return (
           <div className="space-y-6">
+            {/* Notes section */}
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">Notes (optional)</Label>
               <Textarea
                 id="notes"
                 {...step4Form.register('notes')}
@@ -586,97 +728,227 @@ export function ProductionWizard({
               />
             </div>
 
-            <Card>
-              <CardContent className="pt-6">
-                <h4 className="font-medium mb-4">Summary</h4>
-                <div className="grid gap-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-[var(--muted-foreground)]">
-                      Production Date
-                    </span>
-                    <span>
-                      {data.productionDate
-                        ? formatDateTime(data.productionDate)
-                        : '-'}
-                    </span>
-                  </div>
+            {/* Summary Header */}
+            <div className="flex items-center gap-2 pb-2 border-b border-[var(--border)]">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <h4 className="font-semibold text-lg">Production Batch Summary</h4>
+            </div>
 
-                  {/* Feedstock Allocations */}
-                  {allocations.length > 0 && (
-                    <div className="pt-2 border-t border-[var(--border)] mt-2">
-                      <span className="text-[var(--muted-foreground)] block mb-2">
-                        Feedstock Sources ({allocations.length})
-                      </span>
-                      <div className="space-y-1.5 ml-2">
-                        {allocations.map((allocation, idx) => {
-                          const fs = feedstockOptions.find(
-                            (f) => f.id === allocation.feedstockDeliveryId
-                          );
-                          if (!fs) return null;
-                          const allocWeight = fs.weightTonnes
-                            ? (fs.weightTonnes * allocation.percentageUsed) / 100
-                            : 0;
-                          return (
-                            <div key={idx} className="flex justify-between text-xs">
-                              <span>
-                                {formatDateTimeShort(fs.date)} – {fs.feedstockType}
-                              </span>
-                              <span>
-                                {allocation.percentageUsed}% ({allocWeight.toFixed(2)}t)
-                              </span>
-                            </div>
-                          );
-                        })}
-                        <div className="flex justify-between text-xs font-medium pt-1 border-t border-[var(--border)]">
-                          <span>Total Input Weight</span>
-                          <span>{inputWeight.toFixed(2)} tonnes</span>
+            {/* Main metrics grid */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Production Date Card */}
+              <Card className="border-[var(--border)]">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide">Production Date</p>
+                      <p className="font-medium mt-0.5">
+                        {data.productionDate ? formatDateTime(data.productionDate) : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Conversion Rate Card */}
+              {inputWeight > 0 && data.outputBiocharWeightTonnes && (
+                <Card className={`border ${getConversionRateColor(conversionRate)}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${conversionRate > 100 ? 'bg-red-100 text-red-600' : conversionRate >= 20 && conversionRate <= 35 ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                        <TrendingUp className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide">Conversion Rate</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="font-semibold text-lg">{conversionRate.toFixed(1)}%</p>
+                          {conversionRate > 100 && (
+                            <span className="text-xs flex items-center gap-1 text-red-600">
+                              <AlertTriangle className="h-3 w-3" /> exceeds input
+                            </span>
+                          )}
+                          {conversionRate >= 20 && conversionRate <= 35 && (
+                            <span className="text-xs text-green-600">typical range</span>
+                          )}
                         </div>
                       </div>
                     </div>
-                  )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
-                  <div className="flex justify-between pt-2 border-t border-[var(--border)] mt-2">
-                    <span className="text-[var(--muted-foreground)]">
-                      Output Weight
-                    </span>
-                    <span>
-                      {data.outputBiocharWeightTonnes
-                        ? `${data.outputBiocharWeightTonnes} tonnes`
-                        : '-'}
-                    </span>
-                  </div>
-                  {inputWeight > 0 &&
-                    data.outputBiocharWeightTonnes && (
-                      <div className="flex justify-between">
-                        <span className="text-[var(--muted-foreground)]">
-                          Conversion Rate
-                        </span>
-                        <Badge variant="secondary">
-                          {(
-                            (Number(data.outputBiocharWeightTonnes) /
-                              inputWeight) *
-                            100
-                          ).toFixed(1)}
-                          %
-                        </Badge>
-                      </div>
-                    )}
-                  {(data.temperatureMin ||
-                    data.temperatureMax ||
-                    data.temperatureAvg) && (
-                    <div className="flex justify-between">
-                      <span className="text-[var(--muted-foreground)]">
-                        Temperature Range
-                      </span>
-                      <span>
-                        {data.temperatureMin || '-'} / {data.temperatureAvg || '-'} /{' '}
-                        {data.temperatureMax || '-'} °C
-                      </span>
+            {/* Weight metrics */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Input Weight Card */}
+              <Card className="border-[var(--border)]">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-orange-50 text-orange-600">
+                      <Scale className="h-5 w-5" />
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    <div className="flex-1">
+                      <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide">Input Feedstock</p>
+                      <p className="font-semibold text-lg mt-0.5">{inputWeight.toFixed(2)} <span className="text-sm font-normal">tonnes</span></p>
+                      <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                        from {allocations.length} source{allocations.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Output Weight Card */}
+              <Card className="border-[var(--border)]">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                      <Package className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide">Output Biochar</p>
+                      <p className="font-semibold text-lg mt-0.5">
+                        {data.outputBiocharWeightTonnes ? (
+                          <>{Number(data.outputBiocharWeightTonnes).toFixed(2)} <span className="text-sm font-normal">tonnes</span></>
+                        ) : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Feedstock Sources Detail */}
+            {allocations.length > 0 && (
+              <Card className="border-[var(--border)]">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Scale className="h-4 w-4 text-[var(--muted-foreground)]" />
+                    <h5 className="font-medium text-sm">Feedstock Sources</h5>
+                  </div>
+                  <div className="space-y-2">
+                    {allocations.map((allocation, idx) => {
+                      const fs = feedstockOptions.find(
+                        (f) => f.id === allocation.feedstockDeliveryId
+                      );
+                      if (!fs) return null;
+                      const allocWeight = fs.weightTonnes
+                        ? (fs.weightTonnes * allocation.percentageUsed) / 100
+                        : 0;
+                      const evidenceCount = allocationEvidence[allocation.feedstockDeliveryId]?.length || 0;
+                      return (
+                        <div key={idx} className="flex items-center justify-between py-2 px-3 bg-[var(--muted)]/30 rounded-md">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{getFeedstockTypeLabel(fs.feedstockType)}</p>
+                            <p className="text-xs text-[var(--muted-foreground)]">
+                              {formatDateTimeShort(fs.date)}
+                              {evidenceCount > 0 && (
+                                <span className="ml-2 inline-flex items-center gap-1">
+                                  <Paperclip className="h-3 w-3" />
+                                  {evidenceCount} file{evidenceCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{allocWeight.toFixed(2)}t</p>
+                            <p className="text-xs text-[var(--muted-foreground)]">{allocation.percentageUsed}% used</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Temperature & Evidence Row */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Temperature Card */}
+              {(data.temperatureMin || data.temperatureMax || data.temperatureAvg) ? (
+                <Card className="border-[var(--border)]">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-red-50 text-red-500">
+                        <Thermometer className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide">Temperature Profile</p>
+                        <div className="flex items-center gap-4 mt-1">
+                          {data.temperatureMin && (
+                            <div>
+                              <p className="text-xs text-[var(--muted-foreground)]">Min</p>
+                              <p className="font-medium">{data.temperatureMin}°C</p>
+                            </div>
+                          )}
+                          {data.temperatureAvg && (
+                            <div>
+                              <p className="text-xs text-[var(--muted-foreground)]">Avg</p>
+                              <p className="font-medium">{data.temperatureAvg}°C</p>
+                            </div>
+                          )}
+                          {data.temperatureMax && (
+                            <div>
+                              <p className="text-xs text-[var(--muted-foreground)]">Max</p>
+                              <p className="font-medium">{data.temperatureMax}°C</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-[var(--border)] border-dashed">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-[var(--muted)]/50 text-[var(--muted-foreground)]">
+                        <Thermometer className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide">Temperature Profile</p>
+                        <p className="text-sm text-[var(--muted-foreground)] mt-1">No temperature data recorded</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Evidence Summary Card */}
+              <Card className="border-[var(--border)]">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${totalEvidence > 0 ? 'bg-purple-50 text-purple-600' : 'bg-[var(--muted)]/50 text-[var(--muted-foreground)]'}`}>
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide">Evidence Files</p>
+                      {totalEvidence > 0 ? (
+                        <div className="mt-1 space-y-1">
+                          <p className="font-medium">{totalEvidence} file{totalEvidence !== 1 ? 's' : ''} attached</p>
+                          <div className="text-xs text-[var(--muted-foreground)] space-y-0.5">
+                            {totalFeedstockEvidence > 0 && (
+                              <p>{totalFeedstockEvidence} feedstock evidence</p>
+                            )}
+                            {outputEvidence.length > 0 && (
+                              <p>{outputEvidence.length} output evidence</p>
+                            )}
+                            {temperatureEvidence.length > 0 && (
+                              <p>{temperatureEvidence.length} temperature log</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[var(--muted-foreground)] mt-1">No evidence files attached</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         );
 

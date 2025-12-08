@@ -26,19 +26,24 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   path: string;
+  section?: string | null;
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-  { id: 'feedstock', label: 'Feedstock', icon: Leaf, path: '/feedstock' },
-  { id: 'production', label: 'Production', icon: Factory, path: '/production' },
-  { id: 'energy', label: 'Energy', icon: Zap, path: '/energy' },
-  { id: 'transport', label: 'Transport', icon: Truck, path: '/transport' },
-  { id: 'sequestration', label: 'Sequestration', icon: ArrowDownToLine, path: '/sequestration' },
-  { id: 'network', label: 'Network', icon: Network, path: '/network' },
-  { id: 'lca', label: 'LCA & Verification', icon: Calculator, path: '/lca' },
-  { id: 'datasets', label: 'Datasets', icon: Database, path: '/datasets' },
-  { id: 'registry', label: 'Registry', icon: FileCheck, path: '/registry' },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/', section: null },
+  // BIOCHAR LIFECYCLE
+  { id: 'feedstock', label: 'Feedstock', icon: Leaf, path: '/feedstock', section: 'BIOCHAR LIFECYCLE' },
+  { id: 'production', label: 'Production', icon: Factory, path: '/production', section: 'BIOCHAR LIFECYCLE' },
+  { id: 'sequestration', label: 'Sequestration', icon: ArrowDownToLine, path: '/sequestration', section: 'BIOCHAR LIFECYCLE' },
+  { id: 'network', label: 'Network', icon: Network, path: '/network', section: 'BIOCHAR LIFECYCLE' },
+  // OPERATIONS
+  { id: 'transport', label: 'Transport', icon: Truck, path: '/transport', section: 'OPERATIONS' },
+  { id: 'energy', label: 'Energy', icon: Zap, path: '/energy', section: 'OPERATIONS' },
+  // VERIFICATION
+  { id: 'lca', label: 'LCA & Verification', icon: Calculator, path: '/lca', section: 'VERIFICATION' },
+  { id: 'registry', label: 'Registry', icon: FileCheck, path: '/registry', section: 'VERIFICATION' },
+  // SYSTEM
+  { id: 'datasets', label: 'Datasets', icon: Database, path: '/datasets', section: 'SYSTEM' },
 ];
 
 interface SidebarProps {
@@ -92,28 +97,44 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-6">
+      <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-0.5 px-3">
-          {navItems.map((item) => {
+          {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item.path);
+            const prevItem = navItems[index - 1];
+            const showSectionHeader = item.section && item.section !== prevItem?.section;
 
             return (
-              <li key={item.id}>
-                <Link
-                  href={item.path}
-                  className={cn(
-                    'flex items-center gap-3 rounded-[var(--radius)] px-3 py-2 text-sm transition-colors',
-                    active
-                      ? 'bg-[var(--foreground)] text-[var(--background)] font-medium'
-                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]'
-                  )}
-                  title={collapsed ? item.label : undefined}
-                >
-                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'stroke-[2]' : 'stroke-[1.5]')} />
-                  {!collapsed && <span>{item.label}</span>}
-                </Link>
-              </li>
+              <React.Fragment key={item.id}>
+                {showSectionHeader && !collapsed && (
+                  <li className={cn('pt-4 pb-1 px-3', index > 1 && 'mt-2')}>
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {item.section}
+                    </span>
+                  </li>
+                )}
+                {showSectionHeader && collapsed && (
+                  <li className="pt-4 pb-1">
+                    <div className="mx-auto h-px w-6 bg-border" />
+                  </li>
+                )}
+                <li>
+                  <Link
+                    href={item.path}
+                    className={cn(
+                      'flex items-center gap-3 rounded-[var(--radius)] px-3 py-2 text-sm transition-colors',
+                      active
+                        ? 'bg-[var(--foreground)] text-[var(--background)] font-medium'
+                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]'
+                    )}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <Icon className={cn('h-4 w-4 shrink-0', active ? 'stroke-[2]' : 'stroke-[1.5]')} />
+                    {!collapsed && <span>{item.label}</span>}
+                  </Link>
+                </li>
+              </React.Fragment>
             );
           })}
         </ul>
