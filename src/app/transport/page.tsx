@@ -5,7 +5,7 @@ import db from '@/lib/db';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { Button, Card, CardContent } from '@/components/ui';
 import { TransportTable } from '@/components/transport';
-import { Truck, Route, Fuel, Plus, MapPin } from 'lucide-react';
+import { Truck, Route, Fuel, Plus } from 'lucide-react';
 
 async function getTransportEvents() {
   return db.transportEvent.findMany({
@@ -24,24 +24,16 @@ async function getTransportEvents() {
 
 async function getStats() {
   const events = await db.transportEvent.findMany({
-    select: { distanceKm: true, fuelAmount: true, fuelType: true, originAddress: true, destinationAddress: true },
+    select: { distanceKm: true, fuelAmount: true, fuelType: true },
   });
 
   const totalDistance = events.reduce((sum, e) => sum + (e.distanceKm || 0), 0);
   const totalFuel = events.reduce((sum, e) => sum + (e.fuelAmount || 0), 0);
 
-  // Calculate unique routes without groupBy (which can fail with nullable fields)
-  const routeSet = new Set(
-    events
-      .filter(e => e.originAddress && e.destinationAddress)
-      .map(e => `${e.originAddress}|${e.destinationAddress}`)
-  );
-
   return {
     count: events.length,
     totalDistance,
     totalFuel,
-    uniqueRoutes: routeSet.size,
   };
 }
 
@@ -66,7 +58,7 @@ export default async function TransportPage() {
       />
 
       {/* Stats */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-3">
         <Card className="border-[var(--border)]">
           <CardContent className="p-3">
             <div className="flex items-center gap-2.5">
@@ -102,19 +94,6 @@ export default async function TransportPage() {
               <div>
                 <p className="text-xl font-semibold leading-none">{stats.totalFuel.toFixed(0)}</p>
                 <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">litres fuel</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-[var(--border)] bg-violet-500/5">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-md bg-violet-500/10 flex items-center justify-center">
-                <MapPin className="h-4 w-4 text-violet-500" />
-              </div>
-              <div>
-                <p className="text-xl font-semibold leading-none text-violet-600">{stats.uniqueRoutes}</p>
-                <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">unique routes</p>
               </div>
             </div>
           </CardContent>
