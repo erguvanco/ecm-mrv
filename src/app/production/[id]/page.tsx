@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import db from '@/lib/db';
+import { formatDateTime } from '@/lib/utils';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import {
   Button,
@@ -24,6 +24,18 @@ async function getProductionBatch(id: string) {
           date: true,
           feedstockType: true,
           weightTonnes: true,
+        },
+      },
+      feedstockAllocations: {
+        include: {
+          feedstockDelivery: {
+            select: {
+              id: true,
+              date: true,
+              feedstockType: true,
+              weightTonnes: true,
+            },
+          },
         },
       },
       energyUsages: {
@@ -69,7 +81,7 @@ export default async function ProductionDetailPage({
     <PageContainer>
       <PageHeader
         title="Production Batch Details"
-        description={`Batch from ${format(new Date(batch.productionDate), 'MMMM d, yyyy')}`}
+        description={`Batch from ${formatDateTime(batch.productionDate)}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/' },
           { label: 'Production', href: '/production' },
@@ -93,7 +105,7 @@ export default async function ProductionDetailPage({
             <QRDisplay
               entityType="production"
               entityId={batch.id}
-              entityLabel={`Production Batch - ${format(new Date(batch.productionDate), 'MMM d, yyyy')}`}
+              entityLabel={`Production Batch - ${formatDateTime(batch.productionDate)}`}
               size="md"
               showActions
             />
@@ -118,7 +130,7 @@ export default async function ProductionDetailPage({
                 Production Date
               </span>
               <span className="font-medium">
-                {format(new Date(batch.productionDate), 'MMM d, yyyy')}
+                {formatDateTime(batch.productionDate)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -176,7 +188,66 @@ export default async function ProductionDetailPage({
           </CardContent>
         </Card>
 
-        {batch.feedstockDelivery && (
+        {/* Feedstock Allocations (new multi-select) */}
+        {batch.feedstockAllocations.length > 0 && (
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Feedstock Sources ({batch.feedstockAllocations.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2">
+                {batch.feedstockAllocations.map((allocation) => {
+                  const allocatedWeight = allocation.weightUsedTonnes
+                    || (allocation.feedstockDelivery.weightTonnes
+                      ? (allocation.feedstockDelivery.weightTonnes * allocation.percentageUsed) / 100
+                      : 0);
+                  return (
+                    <Link
+                      key={allocation.feedstockDeliveryId}
+                      href={`/feedstock/${allocation.feedstockDelivery.id}`}
+                      className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
+                    >
+                      <div>
+                        <span className="font-medium">
+                          {formatDateTime(allocation.feedstockDelivery.date)}{' '}
+                          – {allocation.feedstockDelivery.feedstockType}
+                        </span>
+                        <span className="text-sm text-[var(--muted-foreground)] ml-2">
+                          ({allocation.feedstockDelivery.weightTonnes?.toFixed(1) || '?'}t total)
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="outline" className="mr-2">
+                          {allocation.percentageUsed}%
+                        </Badge>
+                        <span className="text-[var(--muted-foreground)]">
+                          {allocatedWeight.toFixed(2)} tonnes
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+                <div className="flex justify-between items-center pt-2 mt-2 border-t border-[var(--border)]">
+                  <span className="text-sm font-medium">Total Allocated</span>
+                  <span className="font-medium">
+                    {batch.feedstockAllocations.reduce((sum, a) => {
+                      const weight = a.weightUsedTonnes
+                        || (a.feedstockDelivery.weightTonnes
+                          ? (a.feedstockDelivery.weightTonnes * a.percentageUsed) / 100
+                          : 0);
+                      return sum + weight;
+                    }, 0).toFixed(2)} tonnes
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Legacy single feedstock delivery (for backwards compatibility) */}
+        {batch.feedstockDelivery && batch.feedstockAllocations.length === 0 && (
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle className="text-lg">
@@ -189,10 +260,7 @@ export default async function ProductionDetailPage({
                 className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
               >
                 <span className="font-medium">
-                  {format(
-                    new Date(batch.feedstockDelivery.date),
-                    'MMM d, yyyy'
-                  )}{' '}
+                  {formatDateTime(batch.feedstockDelivery.date)}{' '}
                   - {batch.feedstockDelivery.feedstockType}
                 </span>
                 <span className="text-[var(--muted-foreground)]">
@@ -259,10 +327,7 @@ export default async function ProductionDetailPage({
                     className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
                   >
                     <span className="font-medium">
-                      {format(
-                        new Date(sb.sequestration.finalDeliveryDate),
-                        'MMM d, yyyy'
-                      )}
+                      {formatDateTime(sb.sequestration.finalDeliveryDate)}
                     </span>
                     <span className="text-[var(--muted-foreground)]">
                       {sb.quantityTonnes.toFixed(2)} tonnes from this

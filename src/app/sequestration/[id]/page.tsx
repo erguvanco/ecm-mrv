@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import db from '@/lib/db';
+import { formatDateTime } from '@/lib/utils';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import {
   Button,
@@ -79,7 +79,7 @@ export default async function SequestrationDetailPage({
     <PageContainer>
       <PageHeader
         title="Sequestration Event Details"
-        description={`Delivery on ${format(new Date(event.finalDeliveryDate), 'MMMM d, yyyy')}`}
+        description={`Delivery on ${formatDateTime(event.finalDeliveryDate)}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/' },
           { label: 'Sequestration', href: '/sequestration' },
@@ -103,7 +103,7 @@ export default async function SequestrationDetailPage({
             <QRDisplay
               entityType="sequestration"
               entityId={event.id}
-              entityLabel={`Sequestration - ${format(new Date(event.finalDeliveryDate), 'MMM d, yyyy')}`}
+              entityLabel={`Sequestration - ${formatDateTime(event.finalDeliveryDate)}`}
               size="md"
               showActions
             />
@@ -128,7 +128,7 @@ export default async function SequestrationDetailPage({
                 Delivery Date
               </span>
               <span className="font-medium">
-                {format(new Date(event.finalDeliveryDate), 'MMM d, yyyy')}
+                {formatDateTime(event.finalDeliveryDate)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -170,7 +170,7 @@ export default async function SequestrationDetailPage({
                 </span>
                 <span className="font-medium">
                   {event.storageStartDate
-                    ? format(new Date(event.storageStartDate), 'MMM d, yyyy')
+                    ? formatDateTime(event.storageStartDate)
                     : '-'}
                 </span>
               </div>
@@ -178,7 +178,7 @@ export default async function SequestrationDetailPage({
                 <span className="text-[var(--muted-foreground)]">End Date</span>
                 <span className="font-medium">
                   {event.storageEndDate
-                    ? format(new Date(event.storageEndDate), 'MMM d, yyyy')
+                    ? formatDateTime(event.storageEndDate)
                     : '-'}
                 </span>
               </div>
@@ -208,10 +208,7 @@ export default async function SequestrationDetailPage({
                     className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
                   >
                     <span className="font-medium">
-                      {format(
-                        new Date(pb.productionBatch.productionDate),
-                        'MMM d, yyyy'
-                      )}
+                      {formatDateTime(pb.productionBatch.productionDate)}
                     </span>
                     <span className="text-[var(--muted-foreground)]">
                       {pb.quantityTonnes.toFixed(2)} tonnes from this

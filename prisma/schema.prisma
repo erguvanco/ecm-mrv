@@ -42,9 +42,10 @@ model FeedstockDelivery {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  productionBatches   ProductionBatch[]
-  transportEvents     TransportEvent[]
-  evidence            EvidenceFile[]
+  productionBatches       ProductionBatch[]
+  productionAllocations   ProductionFeedstock[]
+  transportEvents         TransportEvent[]
+  evidence                EvidenceFile[]
 
   @@index([date])
   @@index([feedstockType])
@@ -59,7 +60,7 @@ model ProductionBatch {
   id                          String   @id @default(uuid())
   serialNumber                Int      @unique @default(autoincrement())
   productionDate              DateTime
-  feedstockDeliveryId         String?
+  feedstockDeliveryId         String?  // Deprecated: use feedstockAllocations instead
   feedstockDelivery           FeedstockDelivery? @relation(fields: [feedstockDeliveryId], references: [id])
   inputFeedstockWeightTonnes  Float
   outputBiocharWeightTonnes   Float
@@ -72,6 +73,7 @@ model ProductionBatch {
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
 
+  feedstockAllocations        ProductionFeedstock[]
   energyUsages                EnergyUsage[]
   sequestrationBatches        SequestrationBatch[]
   bcuBatches                  BCUProductionBatch[]
@@ -79,6 +81,18 @@ model ProductionBatch {
 
   @@index([productionDate])
   @@index([status])
+}
+
+// Join table for Production Batch -> Feedstock Delivery (many-to-many with percentage)
+model ProductionFeedstock {
+  productionBatchId     String
+  feedstockDeliveryId   String
+  percentageUsed        Float    // Percentage of feedstock delivery used (0-100)
+  weightUsedTonnes      Float?   // Calculated weight based on percentage
+  productionBatch       ProductionBatch   @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  feedstockDelivery     FeedstockDelivery @relation(fields: [feedstockDeliveryId], references: [id])
+
+  @@id([productionBatchId, feedstockDeliveryId])
 }
 
 // ============================================
@@ -112,9 +126,20 @@ model EnergyUsage {
 model TransportEvent {
   id                    String   @id @default(uuid())
   date                  DateTime
+  // Origin location
+  originAddress         String?
+  originLat             Float?
+  originLng             Float?
+  // Destination location
+  destinationAddress    String?
+  destinationLat        Float?
+  destinationLng        Float?
+  // Route info
+  distanceKm            Float
+  routeGeometry         String?  // GeoJSON LineString
+  routeCalculatedAt     DateTime?
   vehicleId             String?
   vehicleDescription    String?
-  distanceKm            Float
   fuelType              String?
   fuelTypeOther         String?   // Custom type when fuelType is "other"
   fuelAmount            Float?
@@ -311,6 +336,42 @@ model RouteCache {
 
   @@unique([originLat, originLng, destLat, destLng])
   @@index([expiresAt])
+}
+
+// ============================================
+// EMISSION FACTORS (Custom Datasets)
+// ============================================
+model EmissionFactor {
+  id              String   @id @default(uuid())
+  name            String   // e.g., "Grid Electricity UK", "Diesel combustion"
+  category        String   // electricity, fuel, transport, feedstock, other
+  categoryOther   String?  // Custom category when category is "other"
+  unit            String   // e.g., "kgCO2e/kWh", "kgCO2e/L", "kgCO2e/km"
+  year            Int      // Reference year for the factor
+  source          String   // IPCC, DEFRA, EPA, Custom, etc.
+  sourceOther     String?  // Custom source name when source is "other"
+  region          String?  // UK, US, EU, Global, etc.
+
+  // GHG breakdown
+  co2Factor       Float?   // kg CO2 per unit
+  ch4Factor       Float?   // kg CH4 per unit
+  n2oFactor       Float?   // kg N2O per unit
+  totalCo2e       Float    // Total kg CO2e per unit (calculated or provided)
+
+  // GWP values used (for transparency)
+  gwpCh4          Float?   // GWP for CH4 (e.g., 28 for AR5)
+  gwpN2o          Float?   // GWP for N2O (e.g., 265 for AR5)
+
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([name, year, source])
+  @@index([category])
+  @@index([year])
+  @@index([source])
+  @@index([isActive])
 }
 
 // ============================================

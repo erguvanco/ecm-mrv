@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format } from 'date-fns';
+import { formatDateTime, formatDateTimeShort } from '@/lib/utils';
 import {
   WizardProvider,
   WizardStepper,
@@ -479,7 +479,7 @@ export function SequestrationWizard({
                         />
                         <Label htmlFor={`batch-${batch.id}`} className="flex-1">
                           <span className="font-medium">
-                            {format(new Date(batch.productionDate), 'MMM d, yyyy')}
+                            {formatDateTime(batch.productionDate)}
                           </span>
                           <span className="ml-2 text-[var(--muted-foreground)]">
                             ({batch.outputBiocharWeightTonnes.toFixed(2)} tonnes
@@ -677,7 +677,7 @@ export function SequestrationWizard({
                     </span>
                     <span>
                       {data.finalDeliveryDate
-                        ? format(new Date(data.finalDeliveryDate), 'MMM d, yyyy')
+                        ? formatDateTime(data.finalDeliveryDate)
                         : '-'}
                     </span>
                   </div>

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import db from '@/lib/db';
+import { formatDateTime } from '@/lib/utils';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import {
   Button,
@@ -50,7 +50,7 @@ export default async function TransportDetailPage({
     <PageContainer>
       <PageHeader
         title="Transport Event Details"
-        description={`Transport on ${format(new Date(transportEvent.date), 'MMMM d, yyyy')}`}
+        description={`Transport on ${formatDateTime(transportEvent.date)}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/' },
           { label: 'Transport', href: '/transport' },
@@ -72,7 +72,7 @@ export default async function TransportDetailPage({
             <QRDisplay
               entityType="transport"
               entityId={transportEvent.id}
-              entityLabel={`Transport Event - ${format(new Date(transportEvent.date), 'MMM d, yyyy')}`}
+              entityLabel={`Transport Event - ${formatDateTime(transportEvent.date)}`}
               size="md"
               showActions
             />
@@ -87,12 +87,12 @@ export default async function TransportDetailPage({
             <div className="flex justify-between">
               <span className="text-[var(--muted-foreground)]">Date</span>
               <span className="font-medium">
-                {format(new Date(transportEvent.date), 'MMM d, yyyy')}
+                {formatDateTime(transportEvent.date)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--muted-foreground)]">Distance</span>
-              <span className="font-medium">{transportEvent.distanceKm} km</span>
+              <span className="font-medium">{transportEvent.distanceKm.toFixed(2)} km</span>
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--muted-foreground)]">
@@ -194,10 +194,7 @@ export default async function TransportDetailPage({
                 >
                   <span className="font-medium">Feedstock Delivery</span>
                   <span className="text-[var(--muted-foreground)]">
-                    {format(
-                      new Date(transportEvent.feedstockDelivery.date),
-                      'MMM d, yyyy'
-                    )}
+                    {formatDateTime(transportEvent.feedstockDelivery.date)}
                   </span>
                 </Link>
               )}
@@ -208,10 +205,7 @@ export default async function TransportDetailPage({
                 >
                   <span className="font-medium">Sequestration Event</span>
                   <span className="text-[var(--muted-foreground)]">
-                    {format(
-                      new Date(transportEvent.sequestrationEvent.finalDeliveryDate),
-                      'MMM d, yyyy'
-                    )}
+                    {formatDateTime(transportEvent.sequestrationEvent.finalDeliveryDate)}
                   </span>
                 </Link>
               )}

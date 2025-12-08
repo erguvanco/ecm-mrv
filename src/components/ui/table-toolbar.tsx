@@ -38,27 +38,29 @@ export function TableToolbar({
   return (
     <div
       className={cn(
-        'flex flex-col sm:flex-row gap-3 mb-4',
+        'flex flex-col sm:flex-row gap-2 mb-3',
         className
       )}
     >
-      <div className="flex flex-1 gap-3">
+      <div className="flex flex-1 gap-2">
         {onSearchChange && (
           <SearchInput
             value={searchValue}
             onValueChange={onSearchChange}
             placeholder={searchPlaceholder}
-            className="w-full sm:max-w-xs"
+            className="w-full sm:max-w-[200px]"
+            compact
           />
         )}
         {filters && filters.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             {filters.map((filter) => (
               <Select
                 key={filter.id}
                 value={filter.value || ''}
                 onChange={(e) => filter.onChange?.(e.target.value)}
-                className="w-auto min-w-[140px]"
+                className="w-auto min-w-[120px]"
+                compact
               >
                 <option value="">{filter.label}</option>
                 {filter.options.map((option) => (
@@ -71,7 +73,7 @@ export function TableToolbar({
           </div>
         )}
       </div>
-      {actions && <div className="flex gap-2">{actions}</div>}
+      {actions && <div className="flex gap-1.5">{actions}</div>}
     </div>
   );
 }

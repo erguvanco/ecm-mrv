@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { format } from 'date-fns';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -22,9 +21,13 @@ import {
   Progress,
   EmptyState,
   SortableTableHead,
+  TableToolbar,
+  Pagination,
+  usePagination,
 } from '@/components/ui';
 import { Factory } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { formatDateTime } from '@/lib/utils';
 
 interface ProductionBatch {
   id: string;
@@ -51,19 +54,56 @@ interface ProductionTableProps {
   batches: ProductionBatch[];
 }
 
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'complete', label: 'Complete' },
+];
+
 export function ProductionTable({ batches }: ProductionTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   // Helper to format display ID
   const formatDisplayId = (serialNumber: number) => `PB-${String(serialNumber).padStart(3, '0')}`;
 
+  // Filter batches
+  const filteredData = useMemo(() => {
+    return batches.filter((batch) => {
+      const displayId = formatDisplayId(batch.serialNumber);
+      const matchesSearch = searchQuery === '' ||
+        displayId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        formatDateTime(batch.productionDate).toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesStatus = statusFilter === '' || batch.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [batches, searchQuery, statusFilter]);
+
   // Sorting
-  const { sortedData, sortConfig, handleSort } = useTableSort(batches, {
+  const { sortedData, sortConfig, handleSort } = useTableSort(filteredData, {
     key: 'productionDate',
     direction: 'desc',
   });
+
+  // Pagination
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    startIndex,
+    endIndex,
+    onPageChange,
+    onPageSizeChange,
+  } = usePagination(sortedData.length, 10);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -98,6 +138,20 @@ export function ProductionTable({ batches }: ProductionTableProps) {
 
   return (
     <>
+      <TableToolbar
+        searchPlaceholder="Search batches..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={[
+          {
+            id: 'status',
+            label: 'All Statuses',
+            options: STATUS_OPTIONS,
+            value: statusFilter,
+            onChange: setStatusFilter,
+          },
+        ]}
+      />
       <div className="border bg-[var(--card)]">
         <Table>
           <TableHeader>
@@ -148,7 +202,13 @@ export function ProductionTable({ batches }: ProductionTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedData.map((batch) => {
+            {paginatedData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-[var(--muted-foreground)]">
+                  No batches match your search criteria
+                </TableCell>
+              </TableRow>
+            ) : paginatedData.map((batch) => {
               const conversionRate =
                 batch.inputFeedstockWeightTonnes > 0
                   ? (batch.outputBiocharWeightTonnes /
@@ -162,11 +222,11 @@ export function ProductionTable({ batches }: ProductionTableProps) {
                   className="cursor-pointer hover:bg-[var(--muted)]"
                   onClick={() => router.push(`/production/${batch.id}`)}
                 >
-                  <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
+                  <TableCell className="font-mono text-[var(--muted-foreground)]">
                     {formatDisplayId(batch.serialNumber)}
                   </TableCell>
-                  <TableCell className="font-medium">
-                    {format(new Date(batch.productionDate), 'MMM d, yyyy')}
+                  <TableCell>
+                    {formatDateTime(batch.productionDate)}
                   </TableCell>
                   <TableCell>
                     {batch.inputFeedstockWeightTonnes.toFixed(2)} t
@@ -184,25 +244,24 @@ export function ProductionTable({ batches }: ProductionTableProps) {
                       {batch.status === 'complete' ? 'Complete' : 'Draft'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="w-32">
+                  <TableCell className="w-28">
                     {batch.status === 'draft' ? (
-                      <div className="flex items-center gap-2">
-                        <Progress value={(batch.wizardStep / 5) * 100} />
-                        <span className="text-xs text-[var(--muted-foreground)]">
+                      <div className="flex items-center gap-1.5">
+                        <Progress value={(batch.wizardStep / 5) * 100} className="h-1.5" />
+                        <span className="text-[10px] text-[var(--muted-foreground)]">
                           {batch.wizardStep}/5
                         </span>
                       </div>
                     ) : (
-                      <span className="text-sm text-[var(--muted-foreground)]">
-                        -
-                      </span>
+                      <span className="text-[var(--muted-foreground)]">-</span>
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="h-6 px-2 text-[10px]"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (batch.status === 'draft') {
@@ -217,7 +276,7 @@ export function ProductionTable({ batches }: ProductionTableProps) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleteId(batch.id);
@@ -233,6 +292,14 @@ export function ProductionTable({ batches }: ProductionTableProps) {
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={sortedData.length}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>

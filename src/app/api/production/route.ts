@@ -16,6 +16,18 @@ export async function GET() {
             weightTonnes: true,
           },
         },
+        feedstockAllocations: {
+          include: {
+            feedstockDelivery: {
+              select: {
+                id: true,
+                date: true,
+                feedstockType: true,
+                weightTonnes: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             sequestrationBatches: true,
@@ -47,12 +59,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const productionBatch = await db.productionBatch.create({
-      data: result.data,
-      include: {
-        evidence: true,
-        feedstockDelivery: true,
-      },
+    const { feedstockAllocations, ...batchData } = result.data;
+
+    // Use a transaction to create batch and allocations together
+    const productionBatch = await db.$transaction(async (tx) => {
+      // Create the production batch
+      const batch = await tx.productionBatch.create({
+        data: batchData,
+      });
+
+      // Create feedstock allocations if provided
+      if (feedstockAllocations && feedstockAllocations.length > 0) {
+        // Get feedstock delivery weights to calculate weightUsedTonnes
+        const deliveryIds = feedstockAllocations.map(a => a.feedstockDeliveryId);
+        const deliveries = await tx.feedstockDelivery.findMany({
+          where: { id: { in: deliveryIds } },
+          select: { id: true, weightTonnes: true },
+        });
+        const deliveryWeightMap = new Map(deliveries.map(d => [d.id, d.weightTonnes]));
+
+        await tx.productionFeedstock.createMany({
+          data: feedstockAllocations.map(allocation => ({
+            productionBatchId: batch.id,
+            feedstockDeliveryId: allocation.feedstockDeliveryId,
+            percentageUsed: allocation.percentageUsed,
+            weightUsedTonnes: deliveryWeightMap.get(allocation.feedstockDeliveryId)
+              ? (deliveryWeightMap.get(allocation.feedstockDeliveryId)! * allocation.percentageUsed) / 100
+              : null,
+          })),
+        });
+      }
+
+      // Return batch with allocations
+      return tx.productionBatch.findUnique({
+        where: { id: batch.id },
+        include: {
+          evidence: true,
+          feedstockDelivery: true,
+          feedstockAllocations: {
+            include: {
+              feedstockDelivery: {
+                select: {
+                  id: true,
+                  date: true,
+                  feedstockType: true,
+                  weightTonnes: true,
+                },
+              },
+            },
+          },
+        },
+      });
     });
 
     return NextResponse.json(productionBatch, { status: 201 });

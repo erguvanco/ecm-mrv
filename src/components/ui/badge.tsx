@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-offset-2',
+  'inline-flex items-center gap-0.5 border px-1.5 py-0.5 text-[10px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-offset-2 rounded',
   {
     variants: {
       variant: {
@@ -12,25 +12,25 @@ const badgeVariants = cva(
         secondary:
           'border-transparent bg-[var(--secondary)] text-[var(--secondary-foreground)]',
         destructive:
-          'border-transparent bg-red-100 text-red-800',
+          'border-transparent bg-[var(--error-muted)] text-[var(--error-muted-foreground)]',
         outline: 'text-[var(--foreground)]',
         success:
-          'border-transparent bg-green-100 text-green-800',
+          'border-transparent bg-[var(--success-muted)] text-[var(--success-muted-foreground)]',
         warning:
-          'border-transparent bg-amber-100 text-amber-800',
+          'border-transparent bg-[var(--warning-muted)] text-[var(--warning-muted-foreground)]',
         info:
-          'border-transparent bg-blue-100 text-blue-800',
+          'border-transparent bg-[var(--info-muted)] text-[var(--info-muted-foreground)]',
         // Status variants for workflows
         complete:
-          'border-transparent bg-green-100 text-green-800',
+          'border-transparent bg-[var(--success-muted)] text-[var(--success-muted-foreground)]',
         pending:
-          'border-transparent bg-gray-100 text-gray-600',
+          'border-transparent bg-[var(--pending-muted)] text-[var(--pending-muted-foreground)]',
         draft:
-          'border-transparent bg-yellow-100 text-yellow-800',
+          'border-transparent bg-[var(--warning-muted)] text-[var(--warning-muted-foreground)]',
         active:
-          'border-transparent bg-blue-100 text-blue-800',
+          'border-transparent bg-[var(--info-muted)] text-[var(--info-muted-foreground)]',
         retired:
-          'border-transparent bg-purple-100 text-purple-800',
+          'border-transparent bg-[var(--purple-muted)] text-[var(--purple-muted-foreground)]',
       },
     },
     defaultVariants: {

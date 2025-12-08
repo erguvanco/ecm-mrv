@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { format } from 'date-fns';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -21,10 +20,14 @@ import {
   Spinner,
   EmptyState,
   SortableTableHead,
+  TableToolbar,
+  Pagination,
+  usePagination,
 } from '@/components/ui';
 import { Award } from 'lucide-react';
 import { BCU_STATUSES } from '@/lib/validations/bcu';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { formatDateTime } from '@/lib/utils';
 
 interface BCU {
   id: string;
@@ -52,12 +55,8 @@ export function BCUTable({ bcus }: BCUTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Sorting
-  const { sortedData, sortConfig, handleSort } = useTableSort(bcus, {
-    key: 'issuanceDate',
-    direction: 'desc',
-  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -71,6 +70,42 @@ export function BCUTable({ bcus }: BCUTableProps) {
         return 'secondary';
     }
   };
+
+  // Filter BCUs
+  const filteredData = useMemo(() => {
+    return bcus.filter((bcu) => {
+      const matchesSearch = searchQuery === '' ||
+        bcu.registrySerialNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bcu.ownerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bcu.retirementBeneficiary?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesStatus = statusFilter === '' || bcu.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [bcus, searchQuery, statusFilter]);
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(filteredData, {
+    key: 'issuanceDate',
+    direction: 'desc',
+  });
+
+  // Pagination
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    startIndex,
+    endIndex,
+    onPageChange,
+    onPageSizeChange,
+  } = usePagination(sortedData.length, 10);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -108,6 +143,20 @@ export function BCUTable({ bcus }: BCUTableProps) {
 
   return (
     <>
+      <TableToolbar
+        searchPlaceholder="Search BCUs..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={[
+          {
+            id: 'status',
+            label: 'All Statuses',
+            options: BCU_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+            value: statusFilter,
+            onChange: setStatusFilter,
+          },
+        ]}
+      />
       <div className="border bg-[var(--card)]">
         <Table>
           <TableHeader>
@@ -164,23 +213,29 @@ export function BCUTable({ bcus }: BCUTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedData.map((bcu) => (
+            {paginatedData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-[var(--muted-foreground)]">
+                  No BCUs match your search criteria
+                </TableCell>
+              </TableRow>
+            ) : paginatedData.map((bcu) => (
               <TableRow
                 key={bcu.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"
                 onClick={() => router.push(`/registry/${bcu.id}`)}
               >
-                <TableCell className="font-mono text-sm">
+                <TableCell className="font-mono text-[var(--muted-foreground)]">
                   {bcu.registrySerialNumber}
                 </TableCell>
-                <TableCell className="font-medium">
+                <TableCell>
                   {bcu.quantityTonnesCO2e.toFixed(2)} tCO2e
                 </TableCell>
                 <TableCell>
-                  {format(new Date(bcu.issuanceDate), 'MMM d, yyyy')}
+                  {formatDateTime(bcu.issuanceDate)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getStatusBadgeVariant(bcu.status)}>
+                  <Badge variant={getStatusBadgeVariant(bcu.status)} className="whitespace-nowrap">
                     {BCU_STATUSES.find((s) => s.value === bcu.status)?.label ||
                       bcu.status}
                   </Badge>
@@ -192,10 +247,11 @@ export function BCUTable({ bcus }: BCUTableProps) {
                     : '-'}
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-6 px-2 text-[10px]"
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/registry/${bcu.id}`);
@@ -207,7 +263,7 @@ export function BCUTable({ bcus }: BCUTableProps) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleteId(bcu.id);
@@ -223,6 +279,14 @@ export function BCUTable({ bcus }: BCUTableProps) {
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={sortedData.length}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>

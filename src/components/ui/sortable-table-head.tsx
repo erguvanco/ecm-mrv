@@ -28,22 +28,22 @@ export function SortableTableHead({
   return (
     <th
       className={cn(
-        'h-12 px-4 text-left align-middle font-medium text-[var(--muted-foreground)] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors',
+        'h-8 px-2 text-left align-middle font-medium text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors',
         isActive && 'text-[var(--foreground)]',
         className
       )}
       onClick={() => onSort(sortKey)}
       {...props}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         <span>{children}</span>
         <span className="flex-shrink-0">
           {isActive && sortDirection === 'asc' ? (
-            <ArrowUp className="h-3.5 w-3.5" />
+            <ArrowUp className="h-3 w-3" />
           ) : isActive && sortDirection === 'desc' ? (
-            <ArrowDown className="h-3.5 w-3.5" />
+            <ArrowDown className="h-3 w-3" />
           ) : (
-            <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
+            <ArrowUpDown className="h-3 w-3 opacity-40" />
           )}
         </span>
       </div>

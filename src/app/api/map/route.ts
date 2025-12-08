@@ -1,8 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { getDateRange, type TimeRange } from '@/lib/utils/date-range';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Get time range from query params
+    const { searchParams } = new URL(request.url);
+    const range = (searchParams.get('range') as TimeRange) || 'all';
+    const { start: rangeStart } = getDateRange(range);
+
     // Get plant settings
     let plant = await db.plantSettings.findFirst({
       where: { id: 'singleton' },
@@ -18,11 +24,16 @@ export async function GET() {
       });
     }
 
+    // Build date filter
+    const feedstockDateFilter = rangeStart ? { date: { gte: rangeStart } } : {};
+    const sequestrationDateFilter = rangeStart ? { finalDeliveryDate: { gte: rangeStart } } : {};
+
     // Get feedstock sources with coordinates
     const feedstockSources = await db.feedstockDelivery.findMany({
       where: {
         sourceLat: { not: null },
         sourceLng: { not: null },
+        ...feedstockDateFilter,
       },
       select: {
         id: true,
@@ -46,6 +57,7 @@ export async function GET() {
       where: {
         destinationLat: { not: null },
         destinationLng: { not: null },
+        ...sequestrationDateFilter,
       },
       select: {
         id: true,

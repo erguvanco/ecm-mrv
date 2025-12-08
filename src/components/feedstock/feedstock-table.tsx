@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
 import {
   Table,
   TableBody,
@@ -22,10 +21,13 @@ import {
   EmptyState,
   TableToolbar,
   SortableTableHead,
+  Pagination,
+  usePagination,
 } from '@/components/ui';
 import { Leaf } from 'lucide-react';
 import { FEEDSTOCK_TYPES } from '@/lib/validations/feedstock';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { formatDateTime } from '@/lib/utils';
 
 interface FeedstockDelivery {
   id: string;
@@ -57,8 +59,17 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
   const [typeFilter, setTypeFilter] = useState('');
 
   const getFeedstockTypeLabel = (value: string) => {
+    // Legacy value mapping for seed data
+    const legacyMapping: Record<string, string> = {
+      agricultural_residue: 'Agricultural Residue',
+      forestry_residue: 'Forestry Residue',
+      organic_waste: 'Organic Waste',
+      energy_crops: 'Energy Crops',
+    };
     return (
-      FEEDSTOCK_TYPES.find((t) => t.value === value)?.label || value
+      FEEDSTOCK_TYPES.find((t) => t.value === value)?.label ||
+      legacyMapping[value] ||
+      value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     );
   };
 
@@ -73,7 +84,7 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
         displayId.toLowerCase().includes(searchQuery.toLowerCase()) ||
         feedstock.vehicleId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         getFeedstockTypeLabel(feedstock.feedstockType).toLowerCase().includes(searchQuery.toLowerCase()) ||
-        format(new Date(feedstock.date), 'MMM d, yyyy').toLowerCase().includes(searchQuery.toLowerCase());
+        formatDateTime(feedstock.date).toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesType = typeFilter === '' || feedstock.feedstockType === typeFilter;
 
@@ -86,6 +97,22 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
     key: 'date',
     direction: 'desc',
   });
+
+  // Pagination
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    startIndex,
+    endIndex,
+    onPageChange,
+    onPageSizeChange,
+  } = usePagination(sortedData.length, 10);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -215,26 +242,26 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedData.length === 0 ? (
+            {paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={11} className="text-center py-8 text-[var(--muted-foreground)]">
                   No deliveries match your search criteria
                 </TableCell>
               </TableRow>
-            ) : sortedData.map((feedstock) => (
+            ) : paginatedData.map((feedstock) => (
               <TableRow
                 key={feedstock.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"
                 onClick={() => router.push(`/feedstock/${feedstock.id}`)}
               >
-                <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
+                <TableCell className="font-mono text-[var(--muted-foreground)]">
                   {formatDisplayId(feedstock.serialNumber)}
                 </TableCell>
-                <TableCell className="font-medium">
-                  {format(new Date(feedstock.date), 'MMM d, yyyy')}
+                <TableCell>
+                  {formatDateTime(feedstock.date)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="whitespace-nowrap">
                     {getFeedstockTypeLabel(feedstock.feedstockType)}
                   </Badge>
                 </TableCell>
@@ -251,10 +278,10 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
                     ? `${feedstock.volumeM3.toFixed(2)} m³`
                     : '-'}
                 </TableCell>
-                <TableCell>{feedstock.deliveryDistanceKm} km</TableCell>
+                <TableCell>{feedstock.deliveryDistanceKm.toFixed(2)} km</TableCell>
                 <TableCell>{feedstock.vehicleId || '-'}</TableCell>
                 <TableCell className="text-[var(--muted-foreground)]">
-                  {format(new Date(feedstock.updatedAt), 'MMM d, yyyy HH:mm')}
+                  {formatDateTime(feedstock.updatedAt)}
                 </TableCell>
                 <TableCell>
                   {feedstock.evidence && feedstock.evidence.length > 0 ? (
@@ -267,10 +294,11 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-6 px-2 text-[10px]"
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/feedstock/${feedstock.id}/edit`);
@@ -281,7 +309,7 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteId(feedstock.id);
@@ -296,11 +324,14 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
           </TableBody>
         </Table>
       </div>
-      {sortedData.length > 0 && (
-        <p className="text-xs text-[var(--muted-foreground)] mt-2">
-          Showing {sortedData.length} of {feedstocks.length} deliveries
-        </p>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={sortedData.length}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>

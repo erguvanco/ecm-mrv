@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Spinner } from '@/components/ui';
@@ -55,14 +56,21 @@ interface MapData {
 }
 
 export function DashboardMap() {
+  const searchParams = useSearchParams();
+  const range = searchParams.get('range') || 'all';
+
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMapData = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch('/api/map');
+        const url = range !== 'all'
+          ? `/api/map?range=${range}`
+          : '/api/map';
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch map data');
         const data = await response.json();
         setMapData(data);
@@ -74,7 +82,7 @@ export function DashboardMap() {
     };
 
     fetchMapData();
-  }, []);
+  }, [range]);
 
   const hasPlantLocation = mapData?.plant.lat && mapData?.plant.lng;
   const hasData = (mapData?.feedstockSources.length || 0) + (mapData?.destinations.length || 0) > 0;

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import db from '@/lib/db';
+import { formatDateTime } from '@/lib/utils';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import {
   Button,
@@ -58,7 +58,7 @@ export default async function EnergyDetailPage({
     <PageContainer>
       <PageHeader
         title="Energy Usage Details"
-        description={`${typeLabel} usage from ${format(new Date(energyUsage.periodStart), 'MMM d')} to ${format(new Date(energyUsage.periodEnd), 'MMM d, yyyy')}`}
+        description={`${typeLabel} usage from ${formatDateTime(energyUsage.periodStart)} to ${formatDateTime(energyUsage.periodEnd)}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/' },
           { label: 'Energy', href: '/energy' },
@@ -117,13 +117,13 @@ export default async function EnergyDetailPage({
             <div className="flex justify-between">
               <span className="text-[var(--muted-foreground)]">Start Date</span>
               <span className="font-medium">
-                {format(new Date(energyUsage.periodStart), 'MMM d, yyyy')}
+                {formatDateTime(energyUsage.periodStart)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--muted-foreground)]">End Date</span>
               <span className="font-medium">
-                {format(new Date(energyUsage.periodEnd), 'MMM d, yyyy')}
+                {formatDateTime(energyUsage.periodEnd)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -192,10 +192,7 @@ export default async function EnergyDetailPage({
                 className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
               >
                 <span className="font-medium">
-                  {format(
-                    new Date(energyUsage.productionBatch.productionDate),
-                    'MMM d, yyyy'
-                  )}
+                  {formatDateTime(energyUsage.productionBatch.productionDate)}
                 </span>
                 <span className="text-[var(--muted-foreground)]">
                   {energyUsage.productionBatch.outputBiocharWeightTonnes?.toFixed(

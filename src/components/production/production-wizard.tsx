@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format } from 'date-fns';
+import { formatDateTime, formatDateTimeShort } from '@/lib/utils';
 import {
   WizardProvider,
   WizardStepper,
@@ -21,6 +21,7 @@ import {
   Card,
   CardContent,
   Badge,
+  Button,
 } from '@/components/ui';
 import {
   productionStep1Schema,
@@ -29,7 +30,9 @@ import {
   productionStep4Schema,
   productionStep5Schema,
   PRODUCTION_WIZARD_STEPS,
+  FeedstockAllocation,
 } from '@/lib/validations/production';
+import { Plus, X } from 'lucide-react';
 
 interface FeedstockOption {
   id: string;
@@ -47,7 +50,8 @@ interface ProductionWizardProps {
 export interface ProductionWizardData {
   [key: string]: unknown;
   productionDate?: Date | string;
-  feedstockDeliveryId?: string | null;
+  feedstockDeliveryId?: string | null; // Deprecated
+  feedstockAllocations?: FeedstockAllocation[];
   inputFeedstockWeightTonnes?: number;
   outputBiocharWeightTonnes?: number;
   temperatureMin?: number | null;
@@ -87,6 +91,11 @@ export function ProductionWizard({
     initialData: initialData || {},
   });
 
+  // Local state for feedstock allocations
+  const [allocations, setAllocations] = useState<FeedstockAllocation[]>(
+    data.feedstockAllocations || []
+  );
+
   // Step 1 form
   const step1Form = useForm({
     resolver: zodResolver(productionStep1Schema),
@@ -95,8 +104,55 @@ export function ProductionWizard({
         ? new Date(data.productionDate).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0],
       feedstockDeliveryId: data.feedstockDeliveryId || '',
+      feedstockAllocations: data.feedstockAllocations || [],
     },
   });
+
+  // Feedstock allocation handlers
+  const addAllocation = useCallback(() => {
+    const availableOptions = feedstockOptions.filter(
+      (opt) => !allocations.some((a) => a.feedstockDeliveryId === opt.id)
+    );
+    if (availableOptions.length > 0) {
+      setAllocations((prev) => [
+        ...prev,
+        { feedstockDeliveryId: availableOptions[0].id, percentageUsed: 100 },
+      ]);
+    }
+  }, [feedstockOptions, allocations]);
+
+  const removeAllocation = useCallback((index: number) => {
+    setAllocations((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const updateAllocation = useCallback(
+    (index: number, field: keyof FeedstockAllocation, value: string | number) => {
+      setAllocations((prev) =>
+        prev.map((a, i) =>
+          i === index
+            ? {
+                ...a,
+                [field]: field === 'percentageUsed' ? Number(value) : value,
+              }
+            : a
+        )
+      );
+    },
+    []
+  );
+
+  // Calculate total allocated weight from selected feedstocks
+  const calculateTotalAllocatedWeight = useCallback(() => {
+    return allocations.reduce((total, allocation) => {
+      const feedstock = feedstockOptions.find(
+        (f) => f.id === allocation.feedstockDeliveryId
+      );
+      if (feedstock?.weightTonnes) {
+        return total + (feedstock.weightTonnes * allocation.percentageUsed) / 100;
+      }
+      return total;
+    }, 0);
+  }, [allocations, feedstockOptions]);
 
   // Step 2 form
   const step2Form = useForm({
@@ -173,6 +229,7 @@ export function ProductionWizard({
       updateData({
         productionDate: formData.productionDate,
         feedstockDeliveryId: formData.feedstockDeliveryId || null,
+        feedstockAllocations: allocations.length > 0 ? allocations : undefined,
       });
     } else if (currentStepIndex === 1) {
       const formData = step2Form.getValues();
@@ -204,6 +261,7 @@ export function ProductionWizard({
     const step5Data = step5Form.getValues();
     const finalData = {
       ...data,
+      feedstockAllocations: allocations.length > 0 ? allocations : undefined,
       notes: step5Data.notes || null,
       status: 'complete',
       wizardStep: 5,
@@ -260,23 +318,114 @@ export function ProductionWizard({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="feedstockDeliveryId">
-                Link to Feedstock Delivery
-              </Label>
-              <Select
-                id="feedstockDeliveryId"
-                {...step1Form.register('feedstockDeliveryId')}
-              >
-                <option value="">Select feedstock delivery...</option>
-                {feedstockOptions.map((fs) => (
-                  <option key={fs.id} value={fs.id}>
-                    {format(new Date(fs.date), 'MMM d, yyyy')} -{' '}
-                    {fs.feedstockType}
-                    {fs.weightTonnes ? ` (${fs.weightTonnes}t)` : ''}
-                  </option>
-                ))}
-              </Select>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Link to Feedstock Deliveries</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addAllocation}
+                  disabled={allocations.length >= feedstockOptions.length}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add Feedstock
+                </Button>
+              </div>
+
+              {allocations.length === 0 ? (
+                <p className="text-sm text-[var(--muted-foreground)] py-3 text-center border border-dashed rounded-md">
+                  No feedstock deliveries linked. Click &quot;Add Feedstock&quot; to allocate deliveries to this batch.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {allocations.map((allocation, index) => {
+                    const selectedFeedstock = feedstockOptions.find(
+                      (f) => f.id === allocation.feedstockDeliveryId
+                    );
+                    const allocatedWeight = selectedFeedstock?.weightTonnes
+                      ? (selectedFeedstock.weightTonnes * allocation.percentageUsed) / 100
+                      : 0;
+
+                    return (
+                      <Card key={index} className="border-[var(--border)]">
+                        <CardContent className="p-3">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 space-y-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs">Feedstock Delivery</Label>
+                                <Select
+                                  value={allocation.feedstockDeliveryId}
+                                  onChange={(e) =>
+                                    updateAllocation(index, 'feedstockDeliveryId', e.target.value)
+                                  }
+                                >
+                                  {feedstockOptions.map((fs) => {
+                                    const isUsed = allocations.some(
+                                      (a, i) => i !== index && a.feedstockDeliveryId === fs.id
+                                    );
+                                    return (
+                                      <option key={fs.id} value={fs.id} disabled={isUsed}>
+                                        {formatDateTime(fs.date)} – {fs.feedstockType}
+                                        {fs.weightTonnes ? ` (${fs.weightTonnes}t)` : ''}
+                                        {isUsed ? ' (already selected)' : ''}
+                                      </option>
+                                    );
+                                  })}
+                                </Select>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 space-y-1.5">
+                                  <Label className="text-xs">Percentage Used</Label>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      min="0.01"
+                                      max="100"
+                                      step="0.1"
+                                      value={allocation.percentageUsed}
+                                      onChange={(e) =>
+                                        updateAllocation(index, 'percentageUsed', e.target.value)
+                                      }
+                                      className="w-24"
+                                    />
+                                    <span className="text-sm text-[var(--muted-foreground)]">%</span>
+                                  </div>
+                                </div>
+                                {allocatedWeight > 0 && (
+                                  <div className="text-right">
+                                    <p className="text-xs text-[var(--muted-foreground)]">Allocated</p>
+                                    <p className="text-sm font-medium">{allocatedWeight.toFixed(2)}t</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeAllocation(index)}
+                              className="h-8 w-8 p-0 text-[var(--muted-foreground)] hover:text-red-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+
+                  {/* Total allocated weight summary */}
+                  <div className="flex justify-between items-center pt-2 border-t border-[var(--border)]">
+                    <span className="text-sm text-[var(--muted-foreground)]">
+                      Total Allocated Weight
+                    </span>
+                    <Badge variant="secondary" className="text-sm">
+                      {calculateTotalAllocatedWeight().toFixed(2)} tonnes
+                    </Badge>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -396,11 +545,46 @@ export function ProductionWizard({
                     </span>
                     <span>
                       {data.productionDate
-                        ? format(new Date(data.productionDate), 'MMM d, yyyy')
+                        ? formatDateTime(data.productionDate)
                         : '-'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+
+                  {/* Feedstock Allocations */}
+                  {allocations.length > 0 && (
+                    <div className="pt-2 border-t border-[var(--border)] mt-2">
+                      <span className="text-[var(--muted-foreground)] block mb-2">
+                        Feedstock Sources ({allocations.length})
+                      </span>
+                      <div className="space-y-1.5 ml-2">
+                        {allocations.map((allocation, idx) => {
+                          const fs = feedstockOptions.find(
+                            (f) => f.id === allocation.feedstockDeliveryId
+                          );
+                          if (!fs) return null;
+                          const allocWeight = fs.weightTonnes
+                            ? (fs.weightTonnes * allocation.percentageUsed) / 100
+                            : 0;
+                          return (
+                            <div key={idx} className="flex justify-between text-xs">
+                              <span>
+                                {formatDateTimeShort(fs.date)} – {fs.feedstockType}
+                              </span>
+                              <span>
+                                {allocation.percentageUsed}% ({allocWeight.toFixed(2)}t)
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div className="flex justify-between text-xs font-medium pt-1 border-t border-[var(--border)]">
+                          <span>Total Allocated</span>
+                          <span>{calculateTotalAllocatedWeight().toFixed(2)} tonnes</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between pt-2 border-t border-[var(--border)] mt-2">
                     <span className="text-[var(--muted-foreground)]">
                       Input Weight
                     </span>

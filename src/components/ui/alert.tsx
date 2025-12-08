@@ -4,15 +4,15 @@ import { cn } from '@/lib/utils';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const alertVariants = cva(
-  'relative flex items-start gap-3 p-4 text-sm',
+  'relative flex items-start gap-3 p-4 text-sm rounded-[var(--radius)]',
   {
     variants: {
       variant: {
         default: 'bg-[var(--muted)] text-[var(--foreground)]',
-        success: 'bg-green-50 text-green-800 border border-green-200',
-        error: 'bg-red-50 text-red-800 border border-red-200',
-        warning: 'bg-amber-50 text-amber-800 border border-amber-200',
-        info: 'bg-blue-50 text-blue-800 border border-blue-200',
+        success: 'bg-[var(--success-muted)] text-[var(--success-muted-foreground)] border border-[var(--success)]/20',
+        error: 'bg-[var(--error-muted)] text-[var(--error-muted-foreground)] border border-[var(--error)]/20',
+        warning: 'bg-[var(--warning-muted)] text-[var(--warning-muted-foreground)] border border-[var(--warning)]/20',
+        info: 'bg-[var(--info-muted)] text-[var(--info-muted-foreground)] border border-[var(--info)]/20',
       },
     },
     defaultVariants: {

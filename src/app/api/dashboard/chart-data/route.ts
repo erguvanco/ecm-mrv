@@ -1,17 +1,27 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
-import { format, startOfMonth, endOfMonth, eachMonthOfInterval, max, min } from 'date-fns';
+import { startOfMonth, endOfMonth, eachMonthOfInterval, max, min } from 'date-fns';
+import { getDateRange, type TimeRange } from '@/lib/utils/date-range';
 
 export const dynamic = 'force-dynamic';
 
 // CO2e multiplier (3.6 tonnes CO2e per tonne of biochar)
 const CO2E_MULTIPLIER = 3.6;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Fetch all data without date filtering first
+    // Get time range from query params
+    const { searchParams } = new URL(request.url);
+    const range = (searchParams.get('range') as TimeRange) || 'all';
+    const { start: rangeStart } = getDateRange(range);
+
+    // Build date filter for Prisma queries
+    const dateFilter = rangeStart ? { gte: rangeStart } : undefined;
+
+    // Fetch all data with optional date filtering
     const [feedstockData, productionData, sequestrationData] = await Promise.all([
       db.feedstockDelivery.findMany({
+        where: dateFilter ? { date: dateFilter } : undefined,
         select: {
           date: true,
           weightTonnes: true,
@@ -19,7 +29,7 @@ export async function GET() {
         orderBy: { date: 'asc' },
       }),
       db.productionBatch.findMany({
-        where: { status: 'complete' },
+        where: { status: 'complete', ...(dateFilter ? { productionDate: dateFilter } : {}) },
         select: {
           productionDate: true,
           outputBiocharWeightTonnes: true,
@@ -27,7 +37,7 @@ export async function GET() {
         orderBy: { productionDate: 'asc' },
       }),
       db.sequestrationEvent.findMany({
-        where: { status: 'complete' },
+        where: { status: 'complete', ...(dateFilter ? { finalDeliveryDate: dateFilter } : {}) },
         select: {
           finalDeliveryDate: true,
           batches: {
@@ -82,7 +92,7 @@ export async function GET() {
         }, 0);
 
       return {
-        month: format(monthDate, 'MMM yyyy'),
+        month: monthDate.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
         feedstockDeliveries: Number(feedstockDeliveries.toFixed(2)),
         biocharProduced: Number(biocharProduced.toFixed(2)),
         co2Sequestered: Number(co2Sequestered.toFixed(2)),

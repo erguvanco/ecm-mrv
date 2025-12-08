@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { format } from 'date-fns';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -21,10 +20,14 @@ import {
   Spinner,
   EmptyState,
   SortableTableHead,
+  TableToolbar,
+  Pagination,
+  usePagination,
 } from '@/components/ui';
 import { Truck } from 'lucide-react';
 import { TRANSPORT_FUEL_TYPES } from '@/lib/validations/transport';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { formatDateTime } from '@/lib/utils';
 
 interface TransportEvent {
   id: string;
@@ -48,17 +51,49 @@ export function TransportTable({ transportEvents }: TransportTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Sorting
-  const { sortedData, sortConfig, handleSort } = useTableSort(transportEvents, {
-    key: 'date',
-    direction: 'desc',
-  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [fuelFilter, setFuelFilter] = useState('');
 
   const getFuelTypeLabel = (value: string | null) => {
     if (!value) return '-';
     return TRANSPORT_FUEL_TYPES.find((t) => t.value === value)?.label || value;
   };
+
+  // Filter transport events
+  const filteredData = useMemo(() => {
+    return transportEvents.filter((event) => {
+      const matchesSearch = searchQuery === '' ||
+        event.vehicleId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.cargoDescription?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        formatDateTime(event.date).toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesFuel = fuelFilter === '' || event.fuelType === fuelFilter;
+
+      return matchesSearch && matchesFuel;
+    });
+  }, [transportEvents, searchQuery, fuelFilter]);
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(filteredData, {
+    key: 'date',
+    direction: 'desc',
+  });
+
+  // Pagination
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    startIndex,
+    endIndex,
+    onPageChange,
+    onPageSizeChange,
+  } = usePagination(sortedData.length, 10);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -93,6 +128,20 @@ export function TransportTable({ transportEvents }: TransportTableProps) {
 
   return (
     <>
+      <TableToolbar
+        searchPlaceholder="Search transport events..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={[
+          {
+            id: 'fuel',
+            label: 'All Fuel Types',
+            options: TRANSPORT_FUEL_TYPES.map((t) => ({ value: t.value, label: t.label })),
+            value: fuelFilter,
+            onChange: setFuelFilter,
+          },
+        ]}
+      />
       <div className="border bg-[var(--card)]">
         <Table>
           <TableHeader>
@@ -142,22 +191,28 @@ export function TransportTable({ transportEvents }: TransportTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedData.map((event) => (
+            {paginatedData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-[var(--muted-foreground)]">
+                  No transport events match your search criteria
+                </TableCell>
+              </TableRow>
+            ) : paginatedData.map((event) => (
               <TableRow
                 key={event.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"
                 onClick={() => router.push(`/transport/${event.id}`)}
               >
-                <TableCell className="font-medium">
-                  {format(new Date(event.date), 'MMM d, yyyy')}
+                <TableCell>
+                  {formatDateTime(event.date)}
                 </TableCell>
-                <TableCell>{event.distanceKm} km</TableCell>
+                <TableCell>{event.distanceKm.toFixed(2)} km</TableCell>
                 <TableCell>
                   {event.vehicleId || event.vehicleDescription || '-'}
                 </TableCell>
                 <TableCell>
                   {event.fuelType ? (
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="whitespace-nowrap">
                       {getFuelTypeLabel(event.fuelType)}
                     </Badge>
                   ) : (
@@ -178,10 +233,11 @@ export function TransportTable({ transportEvents }: TransportTableProps) {
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-6 px-2 text-[10px]"
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/transport/${event.id}/edit`);
@@ -192,7 +248,7 @@ export function TransportTable({ transportEvents }: TransportTableProps) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteId(event.id);
@@ -207,6 +263,14 @@ export function TransportTable({ transportEvents }: TransportTableProps) {
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={sortedData.length}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>

@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { Factory, Leaf, ArrowDownToLine, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDateTime } from '@/lib/utils';
 import { QRDisplay } from '@/components/qr/qr-display';
 
 // Import mapbox components - will only render client-side due to isMounted check
@@ -378,7 +378,7 @@ export function NetworkMap({
                       {(popupInfo.data as FeedstockSource).feedstockType.replace('_', ' ')}
                     </p>
                     <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
-                      {format(new Date((popupInfo.data as FeedstockSource).date), 'MMM d, yyyy')}
+                      {formatDateTime((popupInfo.data as FeedstockSource).date)}
                     </p>
                     <div className="flex items-center gap-2 mt-1 text-[11px]">
                       {(popupInfo.data as FeedstockSource).weightTonnes && (
@@ -402,7 +402,7 @@ export function NetworkMap({
                       {(popupInfo.data as Destination).sequestrationType.replace('_', ' ')}
                     </p>
                     <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
-                      {format(new Date((popupInfo.data as Destination).finalDeliveryDate), 'MMM d, yyyy')}
+                      {formatDateTime((popupInfo.data as Destination).finalDeliveryDate)}
                     </p>
                     <div className="flex items-center gap-2 mt-1 text-[11px]">
                       <span className="font-medium">{(popupInfo.data as Destination).quantityTonnes.toFixed(1)}t</span>
@@ -448,7 +448,7 @@ export function NetworkMap({
                     {(selectedRoute.data as FeedstockSource).feedstockType.replace('_', ' ')}
                   </p>
                   <p className="text-xs text-[var(--muted-foreground)]">
-                    {format(new Date((selectedRoute.data as FeedstockSource).date), 'MMM d, yyyy')}
+                    {formatDateTime((selectedRoute.data as FeedstockSource).date)}
                   </p>
                   {(selectedRoute.data as FeedstockSource).sourceAddress && (
                     <p className="text-xs text-[var(--muted-foreground)]">
@@ -459,7 +459,7 @@ export function NetworkMap({
                     <div>
                       <p className="text-[var(--muted-foreground)]">Distance</p>
                       <p className="font-medium">
-                        {((selectedRoute.data as FeedstockSource).routeDistanceKm || (selectedRoute.data as FeedstockSource).deliveryDistanceKm).toFixed(1)} km
+                        {((selectedRoute.data as FeedstockSource).routeDistanceKm || (selectedRoute.data as FeedstockSource).deliveryDistanceKm).toFixed(2)} km
                       </p>
                     </div>
                     {(selectedRoute.data as FeedstockSource).weightTonnes && (
@@ -504,7 +504,7 @@ export function NetworkMap({
                     {(selectedRoute.data as Destination).sequestrationType.replace('_', ' ')}
                   </p>
                   <p className="text-xs text-[var(--muted-foreground)]">
-                    {format(new Date((selectedRoute.data as Destination).finalDeliveryDate), 'MMM d, yyyy')}
+                    {formatDateTime((selectedRoute.data as Destination).finalDeliveryDate)}
                   </p>
                   <p className="text-xs text-[var(--muted-foreground)]">
                     To: {(selectedRoute.data as Destination).deliveryPostcode}
@@ -513,7 +513,7 @@ export function NetworkMap({
                     {(selectedRoute.data as Destination).routeDistanceKm && (
                       <div>
                         <p className="text-[var(--muted-foreground)]">Distance</p>
-                        <p className="font-medium">{(selectedRoute.data as Destination).routeDistanceKm?.toFixed(1)} km</p>
+                        <p className="font-medium">{(selectedRoute.data as Destination).routeDistanceKm?.toFixed(2)} km</p>
                       </div>
                     )}
                     <div>

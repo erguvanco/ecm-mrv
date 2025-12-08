@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { validateEntitySchema } from '@/lib/validations/qr';
-import { format } from 'date-fns';
+import { formatDateTime } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
           },
         });
         if (entity) {
-          label = `Production Batch - ${format(new Date(entity.productionDate), 'MMM d, yyyy')}`;
+          label = `Production Batch - ${formatDateTime(entity.productionDate)}`;
           details = {
             status: entity.status,
             output: entity.outputBiocharWeightTonnes,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
           },
         });
         if (entity) {
-          label = `Feedstock Delivery - ${format(new Date(entity.date), 'MMM d, yyyy')}`;
+          label = `Feedstock Delivery - ${formatDateTime(entity.date)}`;
           details = {
             type: entity.feedstockType,
             weight: entity.weightTonnes,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
           },
         });
         if (entity) {
-          label = `Sequestration Event - ${format(new Date(entity.finalDeliveryDate), 'MMM d, yyyy')}`;
+          label = `Sequestration Event - ${formatDateTime(entity.finalDeliveryDate)}`;
           details = {
             type: entity.sequestrationType,
             status: entity.status,
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
           },
         });
         if (entity) {
-          label = `Transport Event - ${format(new Date(entity.date), 'MMM d, yyyy')}`;
+          label = `Transport Event - ${formatDateTime(entity.date)}`;
           details = {
             distance: entity.distanceKm,
             cargo: entity.cargoDescription,
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
           },
         });
         if (entity) {
-          label = `Energy Usage - ${format(new Date(entity.periodStart), 'MMM d, yyyy')}`;
+          label = `Energy Usage - ${formatDateTime(entity.periodStart)}`;
           details = {
             type: entity.energyType,
             quantity: `${entity.quantity} ${entity.unit}`,

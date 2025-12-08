@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format } from 'date-fns';
+import { formatDateTime } from '@/lib/utils';
 import { createBCUSchema, type BCUInput } from '@/lib/validations/bcu';
 import {
   Button,
@@ -124,7 +124,7 @@ export function IssueBCUForm({ sequestrationOptions }: IssueBCUFormProps) {
               <option value="">Select event...</option>
               {sequestrationOptions.map((event) => (
                 <option key={event.id} value={event.id}>
-                  {format(new Date(event.finalDeliveryDate), 'MMM d, yyyy')} -{' '}
+                  {formatDateTime(event.finalDeliveryDate)} -{' '}
                   {event.sequestrationType} ({event.quantityTonnes.toFixed(2)}t)
                 </option>
               ))}

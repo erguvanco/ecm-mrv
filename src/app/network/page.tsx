@@ -149,14 +149,14 @@ export default function NetworkPage() {
       ) : (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl font-semibold">{mapData?.feedstockSources.length || 0}</p>
+                <p className="text-xl md:text-2xl font-semibold">{mapData?.feedstockSources.length || 0}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">
                   Feedstock Sources
                   {mapData && mapData.stats.totalFeedstock > mapData.feedstockSources.length && (
-                    <span className="text-amber-600 ml-1">
+                    <span className="text-[var(--warning)] ml-1">
                       ({mapData.stats.totalFeedstock - mapData.feedstockSources.length} unmapped)
                     </span>
                   )}
@@ -165,11 +165,11 @@ export default function NetworkPage() {
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl font-semibold">{mapData?.destinations.length || 0}</p>
+                <p className="text-xl md:text-2xl font-semibold">{mapData?.destinations.length || 0}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">
                   Destinations
                   {mapData && mapData.stats.totalSequestration > mapData.destinations.length && (
-                    <span className="text-amber-600 ml-1">
+                    <span className="text-[var(--warning)] ml-1">
                       ({mapData.stats.totalSequestration - mapData.destinations.length} unmapped)
                     </span>
                   )}
@@ -178,20 +178,20 @@ export default function NetworkPage() {
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl font-semibold">{totalMapped}</p>
+                <p className="text-xl md:text-2xl font-semibold">{totalMapped}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">Total Locations</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl font-semibold">{mapData?.plant.plantName}</p>
+                <p className="text-xl md:text-2xl font-semibold truncate">{mapData?.plant.plantName}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">Plant</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Map */}
-          <div className="h-[calc(100vh-340px)] min-h-[400px]">
+          <div className="h-[400px] md:h-[500px] lg:h-[calc(100vh-340px)] lg:min-h-[500px]">
             {mapData && (
               <NetworkMap
                 plant={mapData.plant}

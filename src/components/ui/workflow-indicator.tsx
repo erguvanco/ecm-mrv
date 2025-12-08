@@ -24,54 +24,55 @@ export function WorkflowIndicator({
   orientation = 'horizontal',
   className,
 }: WorkflowIndicatorProps) {
-  const getStatusIcon = (status: WorkflowStep['status']) => {
+  const getStatusIcon = (status: WorkflowStep['status'], isCurrent: boolean) => {
+    const iconClass = isCurrent ? 'h-3 w-3' : 'h-3 w-3';
     switch (status) {
       case 'complete':
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+        return <CheckCircle2 className={cn(iconClass, isCurrent ? 'text-[var(--primary-foreground)]' : 'text-[var(--success)]')} />;
       case 'available':
-        return <AlertCircle className="h-5 w-5 text-amber-500" />;
+        return <AlertCircle className={cn(iconClass, isCurrent ? 'text-[var(--primary-foreground)]' : 'text-[var(--warning)]')} />;
       default:
-        return <Circle className="h-5 w-5 text-[var(--muted-foreground)]" />;
+        return <Circle className={cn(iconClass, 'text-[var(--muted-foreground)]')} />;
     }
   };
 
   const getStatusStyles = (step: WorkflowStep, isCurrent: boolean) => {
     if (isCurrent) {
-      return 'bg-[var(--primary)] text-[var(--primary-foreground)]';
+      return 'bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]';
     }
     switch (step.status) {
       case 'complete':
-        return 'bg-green-50 text-green-700 border-green-200';
+        return 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30 hover:bg-[var(--success)]/20';
       case 'available':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
+        return 'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30 hover:bg-[var(--warning)]/20';
       default:
-        return 'bg-[var(--muted)] text-[var(--muted-foreground)]';
+        return 'bg-[var(--muted)] text-[var(--muted-foreground)] border-transparent hover:bg-[var(--muted)]/80';
     }
   };
 
   if (orientation === 'vertical') {
     return (
-      <div className={cn('flex flex-col gap-2', className)}>
+      <div className={cn('flex flex-col gap-1', className)}>
         {steps.map((step, index) => {
           const isCurrent = step.id === currentStep;
           return (
-            <div key={step.id} className="flex items-start gap-3">
+            <div key={step.id} className="flex items-start gap-2">
               <div className="flex flex-col items-center">
-                {getStatusIcon(step.status)}
+                {getStatusIcon(step.status, isCurrent)}
                 {index < steps.length - 1 && (
-                  <div className="w-px h-8 bg-[var(--border)] my-1" />
+                  <div className="w-px h-6 bg-[var(--border)] my-0.5" />
                 )}
               </div>
               <Link
                 href={step.href}
                 className={cn(
-                  'text-sm py-1 px-2 -mt-0.5 hover:bg-[var(--muted)] transition-colors',
+                  'text-xs py-0.5 px-1.5 -mt-0.5 hover:bg-[var(--muted)] transition-colors rounded',
                   isCurrent && 'font-medium'
                 )}
               >
                 {step.label}
                 {step.count !== undefined && (
-                  <span className="ml-2 text-xs text-[var(--muted-foreground)]">
+                  <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">
                     ({step.count})
                   </span>
                 )}
@@ -86,7 +87,7 @@ export function WorkflowIndicator({
   return (
     <div
       className={cn(
-        'flex items-center gap-1 p-3 bg-[var(--muted)]/50 overflow-x-auto',
+        'flex items-center gap-0.5 py-1.5 px-2 bg-[var(--muted)]/30 rounded overflow-x-auto',
         className
       )}
     >
@@ -97,32 +98,22 @@ export function WorkflowIndicator({
             <Link
               href={step.href}
               className={cn(
-                'flex items-center gap-2 px-3 py-1.5 text-sm whitespace-nowrap transition-colors border',
-                getStatusStyles(step, isCurrent),
-                'hover:opacity-80'
+                'flex items-center gap-1 px-2 py-1 text-xs whitespace-nowrap transition-colors border rounded',
+                getStatusStyles(step, isCurrent)
               )}
             >
-              {getStatusIcon(step.status)}
+              {getStatusIcon(step.status, isCurrent)}
               <span className={isCurrent ? 'font-medium' : ''}>
                 {step.label}
               </span>
               {step.count !== undefined && step.count > 0 && (
-                <span
-                  className={cn(
-                    'text-xs px-1.5 py-0.5',
-                    step.status === 'complete'
-                      ? 'bg-green-200 text-green-800'
-                      : step.status === 'available'
-                        ? 'bg-amber-200 text-amber-800'
-                        : 'bg-[var(--background)] text-[var(--muted-foreground)]'
-                  )}
-                >
+                <span className="text-[10px] opacity-70">
                   {step.count}
                 </span>
               )}
             </Link>
             {index < steps.length - 1 && (
-              <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)] flex-shrink-0" />
+              <ChevronRight className="h-3 w-3 text-[var(--muted-foreground)] flex-shrink-0 mx-0.5" />
             )}
           </React.Fragment>
         );

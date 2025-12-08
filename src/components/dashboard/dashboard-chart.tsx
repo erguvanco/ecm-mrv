@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   LineChart,
   Line,
@@ -36,6 +37,9 @@ const SERIES_CONFIG: SeriesConfig[] = [
 ];
 
 export function DashboardChart() {
+  const searchParams = useSearchParams();
+  const range = searchParams.get('range') || 'all';
+
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +51,12 @@ export function DashboardChart() {
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
       try {
-        const response = await fetch('/api/dashboard/chart-data');
+        const url = range !== 'all'
+          ? `/api/dashboard/chart-data?range=${range}`
+          : '/api/dashboard/chart-data';
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch chart data');
         const result = await response.json();
         setData(result.data);
@@ -59,7 +67,7 @@ export function DashboardChart() {
       }
     }
     fetchData();
-  }, []);
+  }, [range]);
 
   const toggleSeries = (key: string) => {
     setVisibleSeries((prev) => ({ ...prev, [key]: !prev[key] }));

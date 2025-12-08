@@ -8,14 +8,14 @@ export const DEFAULT_ORIGIN_COORDS = { lat: 40.8847, lng: 30.1669 }; // Approxim
 const transportEventBaseSchema = z.object({
   id: z.string().uuid().optional(),
   date: z.coerce.date(),
-  // Origin location
-  originAddress: z.string().min(1, 'Origin address is required'),
-  originLat: z.coerce.number().min(-90).max(90),
-  originLng: z.coerce.number().min(-180).max(180),
-  // Destination location
-  destinationAddress: z.string().min(1, 'Destination address is required'),
-  destinationLat: z.coerce.number().min(-90).max(90),
-  destinationLng: z.coerce.number().min(-180).max(180),
+  // Origin location (optional - can be set later or auto-filled from plant)
+  originAddress: z.string().optional().nullable(),
+  originLat: z.coerce.number().min(-90).max(90).optional().nullable(),
+  originLng: z.coerce.number().min(-180).max(180).optional().nullable(),
+  // Destination location (optional)
+  destinationAddress: z.string().optional().nullable(),
+  destinationLat: z.coerce.number().min(-90).max(90).optional().nullable(),
+  destinationLng: z.coerce.number().min(-180).max(180).optional().nullable(),
   // Distance - auto-calculated or manual
   distanceKm: z.coerce.number().nonnegative('Distance cannot be negative').default(0),
   vehicleId: z.string().optional().nullable(),

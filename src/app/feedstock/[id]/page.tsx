@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import db from '@/lib/db';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
+import { formatDateTime } from '@/lib/utils';
 import {
   Button,
   Card,
@@ -58,7 +58,7 @@ export default async function FeedstockDetailPage({
     <PageContainer>
       <PageHeader
         title="Feedstock Delivery Details"
-        description={`Delivery from ${format(new Date(feedstock.date), 'MMMM d, yyyy')}`}
+        description={`Delivery from ${formatDateTime(feedstock.date)}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/' },
           { label: 'Feedstock', href: '/feedstock' },
@@ -82,7 +82,7 @@ export default async function FeedstockDetailPage({
             <QRDisplay
               entityType="feedstock"
               entityId={feedstock.id}
-              entityLabel={`Feedstock Delivery - ${format(new Date(feedstock.date), 'MMM d, yyyy')}`}
+              entityLabel={`Feedstock Delivery - ${formatDateTime(feedstock.date)}`}
               size="md"
               showActions
             />
@@ -97,7 +97,7 @@ export default async function FeedstockDetailPage({
             <div className="flex justify-between">
               <span className="text-[var(--muted-foreground)]">Date</span>
               <span className="font-medium">
-                {format(new Date(feedstock.date), 'MMM d, yyyy')}
+                {formatDateTime(feedstock.date)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -149,7 +149,7 @@ export default async function FeedstockDetailPage({
                 Delivery Distance
               </span>
               <span className="font-medium">
-                {feedstock.deliveryDistanceKm} km
+                {feedstock.deliveryDistanceKm.toFixed(2)} km
               </span>
             </div>
             <div className="flex justify-between">
@@ -224,7 +224,7 @@ export default async function FeedstockDetailPage({
                     className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
                   >
                     <span className="font-medium">
-                      {format(new Date(batch.productionDate), 'MMM d, yyyy')}
+                      {formatDateTime(batch.productionDate)}
                     </span>
                     <span className="text-[var(--muted-foreground)]">
                       {batch.outputBiocharWeightTonnes?.toFixed(2) || '-'} tonnes

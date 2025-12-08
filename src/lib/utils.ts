@@ -14,6 +14,43 @@ export function formatDate(date: Date | string): string {
   });
 }
 
+/**
+ * Format date with military time (24-hour format)
+ * Output: "08 Dec 2025 14:30"
+ */
+export function formatDateTime(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const dateStr = d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  const timeStr = d.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${dateStr} ${timeStr}`;
+}
+
+/**
+ * Format date with military time, short format for tables
+ * Output: "08 Dec 14:30"
+ */
+export function formatDateTimeShort(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const dateStr = d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+  });
+  const timeStr = d.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${dateStr} ${timeStr}`;
+}
+
 export function formatNumber(num: number, decimals: number = 2): string {
   return num.toLocaleString('en-US', {
     minimumFractionDigits: decimals,

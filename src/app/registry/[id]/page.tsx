@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import db from '@/lib/db';
+import { formatDateTime } from '@/lib/utils';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import {
   Button,
@@ -119,7 +119,7 @@ export default async function BCUDetailPage({
             <div className="flex justify-between">
               <span className="text-[var(--muted-foreground)]">Issuance Date</span>
               <span className="font-medium">
-                {format(new Date(bcu.issuanceDate), 'MMM d, yyyy')}
+                {formatDateTime(bcu.issuanceDate)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -152,7 +152,7 @@ export default async function BCUDetailPage({
                   </span>
                   <span className="font-medium">
                     {bcu.retirementDate
-                      ? format(new Date(bcu.retirementDate), 'MMM d, yyyy')
+                      ? formatDateTime(bcu.retirementDate)
                       : '-'}
                   </span>
                 </div>
@@ -186,10 +186,7 @@ export default async function BCUDetailPage({
                     <div>
                       <p className="font-medium">
                         Delivery:{' '}
-                        {format(
-                          new Date(se.sequestration.finalDeliveryDate),
-                          'MMM d, yyyy'
-                        )}
+                        {formatDateTime(se.sequestration.finalDeliveryDate)}
                       </p>
                       <p className="text-sm text-[var(--muted-foreground)]">
                         {se.sequestration.sequestrationType} •{' '}
@@ -214,10 +211,7 @@ export default async function BCUDetailPage({
                           className="flex items-center justify-between border p-3 hover:bg-[var(--muted)]"
                         >
                           <span>
-                            {format(
-                              new Date(pb.productionBatch.productionDate),
-                              'MMM d, yyyy'
-                            )}
+                            {formatDateTime(pb.productionBatch.productionDate)}
                           </span>
                           <span className="text-[var(--muted-foreground)]">
                             {pb.quantityTonnes.toFixed(2)} tonnes

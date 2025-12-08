@@ -12,39 +12,39 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<StatusType, { bg: string; text: string; dot: string; defaultLabel: string }> = {
   complete: {
-    bg: 'bg-green-50',
-    text: 'text-green-700',
-    dot: 'bg-green-500',
+    bg: 'bg-[var(--success-muted)]',
+    text: 'text-[var(--success-muted-foreground)]',
+    dot: 'bg-[var(--success)]',
     defaultLabel: 'Complete',
   },
   pending: {
-    bg: 'bg-gray-50',
-    text: 'text-gray-600',
-    dot: 'bg-gray-400',
+    bg: 'bg-[var(--pending-muted)]',
+    text: 'text-[var(--pending-muted-foreground)]',
+    dot: 'bg-[var(--pending)]',
     defaultLabel: 'Pending',
   },
   draft: {
-    bg: 'bg-amber-50',
-    text: 'text-amber-700',
-    dot: 'bg-amber-500',
+    bg: 'bg-[var(--warning-muted)]',
+    text: 'text-[var(--warning-muted-foreground)]',
+    dot: 'bg-[var(--warning)]',
     defaultLabel: 'Draft',
   },
   active: {
-    bg: 'bg-blue-50',
-    text: 'text-blue-700',
-    dot: 'bg-blue-500',
+    bg: 'bg-[var(--info-muted)]',
+    text: 'text-[var(--info-muted-foreground)]',
+    dot: 'bg-[var(--info)]',
     defaultLabel: 'Active',
   },
   retired: {
-    bg: 'bg-purple-50',
-    text: 'text-purple-700',
-    dot: 'bg-purple-500',
+    bg: 'bg-[var(--purple-muted)]',
+    text: 'text-[var(--purple-muted-foreground)]',
+    dot: 'bg-[var(--purple)]',
     defaultLabel: 'Retired',
   },
   error: {
-    bg: 'bg-red-50',
-    text: 'text-red-700',
-    dot: 'bg-red-500',
+    bg: 'bg-[var(--error-muted)]',
+    text: 'text-[var(--error-muted-foreground)]',
+    dot: 'bg-[var(--error)]',
     defaultLabel: 'Error',
   },
 };
@@ -56,7 +56,7 @@ export function StatusBadge({ status, label, showDot = true, className }: Status
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[var(--radius)]',
         config.bg,
         config.text,
         className

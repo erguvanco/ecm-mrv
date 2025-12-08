@@ -40,7 +40,7 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
     address: string;
     coordinates: [number, number];
   } | null>(
-    initialData?.originAddress
+    initialData?.originAddress && initialData?.originLng != null && initialData?.originLat != null
       ? {
           address: initialData.originAddress,
           coordinates: [initialData.originLng, initialData.originLat],

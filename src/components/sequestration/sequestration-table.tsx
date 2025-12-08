@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { format } from 'date-fns';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -22,10 +21,14 @@ import {
   Progress,
   EmptyState,
   SortableTableHead,
+  TableToolbar,
+  Pagination,
+  usePagination,
 } from '@/components/ui';
 import { TreePine } from 'lucide-react';
 import { SEQUESTRATION_TYPES } from '@/lib/validations/sequestration';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { formatDateTime } from '@/lib/utils';
 
 interface SequestrationEvent {
   id: string;
@@ -55,20 +58,59 @@ interface SequestrationTableProps {
   events: SequestrationEvent[];
 }
 
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'complete', label: 'Complete' },
+];
+
 export function SequestrationTable({ events }: SequestrationTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Sorting
-  const { sortedData, sortConfig, handleSort } = useTableSort(events, {
-    key: 'finalDeliveryDate',
-    direction: 'desc',
-  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const getTypeLabel = (value: string) => {
     return SEQUESTRATION_TYPES.find((t) => t.value === value)?.label || value;
   };
+
+  // Filter events
+  const filteredData = useMemo(() => {
+    return events.filter((event) => {
+      const matchesSearch = searchQuery === '' ||
+        event.deliveryPostcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        getTypeLabel(event.sequestrationType).toLowerCase().includes(searchQuery.toLowerCase()) ||
+        formatDateTime(event.finalDeliveryDate).toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesType = typeFilter === '' || event.sequestrationType === typeFilter;
+      const matchesStatus = statusFilter === '' || event.status === statusFilter;
+
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [events, searchQuery, typeFilter, statusFilter]);
+
+  // Sorting
+  const { sortedData, sortConfig, handleSort } = useTableSort(filteredData, {
+    key: 'finalDeliveryDate',
+    direction: 'desc',
+  });
+
+  // Pagination
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    startIndex,
+    endIndex,
+    onPageChange,
+    onPageSizeChange,
+  } = usePagination(sortedData.length, 10);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -103,6 +145,27 @@ export function SequestrationTable({ events }: SequestrationTableProps) {
 
   return (
     <>
+      <TableToolbar
+        searchPlaceholder="Search sequestration events..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={[
+          {
+            id: 'type',
+            label: 'All Types',
+            options: SEQUESTRATION_TYPES.map((t) => ({ value: t.value, label: t.label })),
+            value: typeFilter,
+            onChange: setTypeFilter,
+          },
+          {
+            id: 'status',
+            label: 'All Statuses',
+            options: STATUS_OPTIONS,
+            value: statusFilter,
+            onChange: setStatusFilter,
+          },
+        ]}
+      />
       <div className="border bg-[var(--card)]">
         <Table>
           <TableHeader>
@@ -152,17 +215,23 @@ export function SequestrationTable({ events }: SequestrationTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedData.map((event) => (
+            {paginatedData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-[var(--muted-foreground)]">
+                  No sequestration events match your search criteria
+                </TableCell>
+              </TableRow>
+            ) : paginatedData.map((event) => (
               <TableRow
                 key={event.id}
                 className="cursor-pointer hover:bg-[var(--muted)]"
                 onClick={() => router.push(`/sequestration/${event.id}`)}
               >
-                <TableCell className="font-medium">
-                  {format(new Date(event.finalDeliveryDate), 'MMM d, yyyy')}
+                <TableCell>
+                  {formatDateTime(event.finalDeliveryDate)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="whitespace-nowrap">
                     {getTypeLabel(event.sequestrationType)}
                   </Badge>
                 </TableCell>
@@ -179,19 +248,20 @@ export function SequestrationTable({ events }: SequestrationTableProps) {
                   {event.status === 'complete' ? (
                     <Badge variant="default">Complete</Badge>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <Progress value={(event.wizardStep / 6) * 100} className="w-16" />
-                      <span className="text-xs text-[var(--muted-foreground)]">
+                    <div className="flex items-center gap-1.5">
+                      <Progress value={(event.wizardStep / 6) * 100} className="w-14 h-1.5" />
+                      <span className="text-[10px] text-[var(--muted-foreground)]">
                         {event.wizardStep}/6
                       </span>
                     </div>
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-6 px-2 text-[10px]"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (event.status === 'draft') {
@@ -206,7 +276,7 @@ export function SequestrationTable({ events }: SequestrationTableProps) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteId(event.id);
@@ -221,6 +291,14 @@ export function SequestrationTable({ events }: SequestrationTableProps) {
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={sortedData.length}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>

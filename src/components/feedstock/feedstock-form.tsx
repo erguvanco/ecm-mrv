@@ -377,12 +377,15 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="fuelAmount">Fuel Amount (liters) *</Label>
+            <Label htmlFor="fuelAmount">
+              {watch('fuelType') === 'electric' ? 'Electricity Consumption (kWh) *' : 'Fuel Amount (liters) *'}
+            </Label>
             <Input
               id="fuelAmount"
               type="number"
               step="0.1"
               {...register('fuelAmount')}
+              placeholder={watch('fuelType') === 'electric' ? 'e.g., 50' : 'e.g., 30'}
               className={errors.fuelAmount ? 'border-red-500' : ''}
             />
             {errors.fuelAmount && (

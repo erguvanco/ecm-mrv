@@ -93,12 +93,79 @@ const DialogContent = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, children, ...props }, ref) => {
   const { setOpen } = useDialog();
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  // Focus trap and keyboard handling
+  React.useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+
+    // Get all focusable elements
+    const getFocusableElements = () => {
+      return content.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+    };
+
+    // Focus first focusable element on mount
+    const focusableElements = getFocusableElements();
+    if (focusableElements.length > 0) {
+      focusableElements[0].focus();
+    }
+
+    // Handle keyboard events
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Close on Escape
+      if (e.key === 'Escape') {
+        setOpen(false);
+        return;
+      }
+
+      // Focus trap on Tab
+      if (e.key === 'Tab') {
+        const focusable = getFocusableElements();
+        if (focusable.length === 0) return;
+
+        const firstElement = focusable[0];
+        const lastElement = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab: if on first element, go to last
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          // Tab: if on last element, go to first
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [setOpen]);
+
+  // Combine refs
+  const combinedRef = (node: HTMLDivElement) => {
+    contentRef.current = node;
+    if (typeof ref === 'function') {
+      ref(node);
+    } else if (ref) {
+      ref.current = node;
+    }
+  };
 
   return (
     <DialogPortal>
       <DialogOverlay />
       <div
-        ref={ref}
+        ref={combinedRef}
+        role="dialog"
+        aria-modal="true"
         className={cn(
           'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-[var(--background)] p-6 shadow-lg duration-200',
           className
