@@ -82,6 +82,51 @@ export function NetworkMap({
     setIsMounted(true);
   }, []);
 
+  // All useCallback hooks must be called before any early returns (Rules of Hooks)
+  const handleMarkerClick = useCallback(
+    (e: MarkerEvent<MouseEvent>, type: 'plant' | 'feedstock' | 'destination', data: PlantData | FeedstockSource | Destination, lng: number, lat: number) => {
+      e.originalEvent?.stopPropagation();
+      setPopupInfo({ type, data, lng, lat });
+      setSelectedRoute(null);
+    },
+    []
+  );
+
+  const handleMapClick = useCallback((e: MapMouseEvent) => {
+    // Check if clicked on a route layer
+    const features = e.features;
+    if (features && features.length > 0) {
+      const feature = features[0];
+      const props = feature.properties;
+      if (props && props.id) {
+        const routeType = props.type as 'feedstock' | 'destination';
+        const routeData = routeType === 'feedstock'
+          ? feedstockSources.find(f => f.id === props.id)
+          : destinations.find(d => d.id === props.id);
+
+        if (routeData) {
+          setSelectedRoute({
+            id: props.id,
+            type: routeType,
+            data: routeData,
+            lng: e.lngLat.lng,
+            lat: e.lngLat.lat,
+          });
+          setPopupInfo(null);
+          return;
+        }
+      }
+    }
+
+    // Close popup and deselect route on map click if not clicking a marker or route
+    if (popupInfo) {
+      setPopupInfo(null);
+    }
+    if (selectedRoute) {
+      setSelectedRoute(null);
+    }
+  }, [popupInfo, selectedRoute, feedstockSources, destinations]);
+
   // Show loading state until mounted (prevents SSR issues)
   if (!isMounted) {
     return (
@@ -158,50 +203,6 @@ export function NetworkMap({
     type: 'FeatureCollection',
     features: [...feedstockLines, ...destinationLines],
   };
-
-  const handleMarkerClick = useCallback(
-    (e: MarkerEvent<MouseEvent>, type: 'plant' | 'feedstock' | 'destination', data: PlantData | FeedstockSource | Destination, lng: number, lat: number) => {
-      e.originalEvent?.stopPropagation();
-      setPopupInfo({ type, data, lng, lat });
-      setSelectedRoute(null);
-    },
-    []
-  );
-
-  const handleMapClick = useCallback((e: MapMouseEvent) => {
-    // Check if clicked on a route layer
-    const features = e.features;
-    if (features && features.length > 0) {
-      const feature = features[0];
-      const props = feature.properties;
-      if (props && props.id) {
-        const routeType = props.type as 'feedstock' | 'destination';
-        const routeData = routeType === 'feedstock'
-          ? feedstockSources.find(f => f.id === props.id)
-          : destinations.find(d => d.id === props.id);
-
-        if (routeData) {
-          setSelectedRoute({
-            id: props.id,
-            type: routeType,
-            data: routeData,
-            lng: e.lngLat.lng,
-            lat: e.lngLat.lat,
-          });
-          setPopupInfo(null);
-          return;
-        }
-      }
-    }
-
-    // Close popup and deselect route on map click if not clicking a marker or route
-    if (popupInfo) {
-      setPopupInfo(null);
-    }
-    if (selectedRoute) {
-      setSelectedRoute(null);
-    }
-  }, [popupInfo, selectedRoute, feedstockSources, destinations]);
 
   // Create GeoJSON for highlighted route
   const selectedRouteGeoJSON: GeoJSON.FeatureCollection | null = selectedRoute
