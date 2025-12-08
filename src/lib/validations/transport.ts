@@ -1,12 +1,25 @@
 import { z } from 'zod';
 
+// Default origin address (Garanti Karadeniz plant)
+export const DEFAULT_ORIGIN_ADDRESS = 'Soğucak OSB, Sanayi Cd. No:94, 54160 Söğütlü/Sakarya';
+export const DEFAULT_ORIGIN_COORDS = { lat: 40.8847, lng: 30.1669 }; // Approximate coordinates
+
 // Base schema without superRefine for use with .omit() and .partial()
 const transportEventBaseSchema = z.object({
   id: z.string().uuid().optional(),
   date: z.coerce.date(),
+  // Origin location
+  originAddress: z.string().min(1, 'Origin address is required'),
+  originLat: z.coerce.number().min(-90).max(90),
+  originLng: z.coerce.number().min(-180).max(180),
+  // Destination location
+  destinationAddress: z.string().min(1, 'Destination address is required'),
+  destinationLat: z.coerce.number().min(-90).max(90),
+  destinationLng: z.coerce.number().min(-180).max(180),
+  // Distance - auto-calculated or manual
+  distanceKm: z.coerce.number().nonnegative('Distance cannot be negative').default(0),
   vehicleId: z.string().optional().nullable(),
   vehicleDescription: z.string().optional().nullable(),
-  distanceKm: z.coerce.number().positive('Distance must be positive'),
   fuelType: z.string().optional().nullable(),
   fuelTypeOther: z.string().optional().nullable(),
   fuelAmount: z.coerce.number().positive('Fuel amount must be positive').optional().nullable(),

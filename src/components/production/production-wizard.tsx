@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -132,17 +132,27 @@ export function ProductionWizard({
     },
   });
 
-  // Watch form values for real-time validation
-  const step1Values = step1Form.watch();
-  const step2Values = step2Form.watch();
-  const step3Values = step3Form.watch();
+  // Track previous validation state to prevent infinite loops
+  const prevValidationRef = useRef<{ step1: boolean; step2: boolean; step3: boolean } | null>(null);
 
-  // Validate steps when data or form values change
+  // Validate steps when data changes
   useEffect(() => {
-    const validateSteps = async () => {
-      const step1Valid = await step1Form.trigger();
-      const step2Valid = data.inputFeedstockWeightTonnes != null && Number(data.inputFeedstockWeightTonnes) > 0;
-      const step3Valid = data.outputBiocharWeightTonnes != null && Number(data.outputBiocharWeightTonnes) > 0;
+    if (!isInitialized) return;
+
+    const step1Valid = !!data.productionDate;
+    const step2Valid = data.inputFeedstockWeightTonnes != null && Number(data.inputFeedstockWeightTonnes) > 0;
+    const step3Valid = data.outputBiocharWeightTonnes != null && Number(data.outputBiocharWeightTonnes) > 0;
+
+    const prev = prevValidationRef.current;
+
+    // Only update if validation status has actually changed
+    if (
+      !prev ||
+      step1Valid !== prev.step1 ||
+      step2Valid !== prev.step2 ||
+      step3Valid !== prev.step3
+    ) {
+      prevValidationRef.current = { step1: step1Valid, step2: step2Valid, step3: step3Valid };
 
       const newSteps = steps.map((step) => {
         if (step.id === '1') return { ...step, isValid: step1Valid };
@@ -152,14 +162,9 @@ export function ProductionWizard({
         if (step.id === '5') return { ...step, isValid: true, isOptional: true };
         return step;
       });
-
       updateSteps(newSteps);
-    };
-
-    if (isInitialized) {
-      validateSteps();
     }
-  }, [data, isInitialized, step1Values, step2Values, step3Values]);
+  }, [data.productionDate, data.inputFeedstockWeightTonnes, data.outputBiocharWeightTonnes, isInitialized, steps, updateSteps]);
 
   const handleStepChange = (newIndex: number) => {
     // Save current step data before changing

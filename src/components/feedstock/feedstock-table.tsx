@@ -37,6 +37,7 @@ interface FeedstockDelivery {
   deliveryDistanceKm: number;
   vehicleId: string | null;
   sourceAddress: string | null;
+  updatedAt: string | Date;
   _count?: {
     productionBatches: number;
     transportEvents: number;
@@ -201,6 +202,14 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
               >
                 Vehicle
               </SortableTableHead>
+              <SortableTableHead
+                sortKey="updatedAt"
+                currentSortKey={sortConfig?.key as string}
+                sortDirection={sortConfig?.direction ?? null}
+                onSort={handleSort}
+              >
+                Last Edited
+              </SortableTableHead>
               <TableHead>Evidence</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -208,7 +217,7 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
           <TableBody>
             {sortedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-[var(--muted-foreground)]">
+                <TableCell colSpan={11} className="text-center py-8 text-[var(--muted-foreground)]">
                   No deliveries match your search criteria
                 </TableCell>
               </TableRow>
@@ -244,6 +253,9 @@ export function FeedstockTable({ feedstocks }: FeedstockTableProps) {
                 </TableCell>
                 <TableCell>{feedstock.deliveryDistanceKm} km</TableCell>
                 <TableCell>{feedstock.vehicleId || '-'}</TableCell>
+                <TableCell className="text-[var(--muted-foreground)]">
+                  {format(new Date(feedstock.updatedAt), 'MMM d, yyyy HH:mm')}
+                </TableCell>
                 <TableCell>
                   {feedstock.evidence && feedstock.evidence.length > 0 ? (
                     <Badge variant="outline">

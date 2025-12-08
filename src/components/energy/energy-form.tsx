@@ -3,13 +3,14 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   createEnergyUsageSchema,
   EnergyUsageInput,
   ENERGY_SCOPES,
   ENERGY_TYPES,
   ENERGY_UNITS,
+  getDefaultUnitForEnergyType,
 } from '@/lib/validations/energy';
 import {
   Button,
@@ -44,6 +45,7 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(createEnergyUsageSchema),
@@ -66,6 +68,18 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
           notes: '',
         },
   });
+
+  const selectedEnergyType = watch('energyType');
+
+  // Auto-set unit when energy type changes
+  useEffect(() => {
+    if (selectedEnergyType && selectedEnergyType !== 'other') {
+      const defaultUnit = getDefaultUnitForEnergyType(selectedEnergyType);
+      if (defaultUnit) {
+        setValue('unit', defaultUnit);
+      }
+    }
+  }, [selectedEnergyType, setValue]);
 
   const onSubmit = async (data: EnergyUsageInput) => {
     setIsSubmitting(true);
@@ -156,6 +170,7 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
               {ENERGY_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.label}
+                  {type.defaultUnit ? ` (${type.defaultUnit === 'litres' ? 'liters' : type.defaultUnit})` : ''}
                 </option>
               ))}
             </Select>
@@ -166,23 +181,52 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
             )}
           </div>
 
-          {watch('energyType') === 'other' && (
-            <div className="space-y-2">
-              <Label htmlFor="energyTypeOther">Please specify *</Label>
-              <Input
-                id="energyTypeOther"
-                {...register('energyTypeOther')}
-                placeholder="Enter energy type..."
-                className={errors.energyTypeOther ? 'border-red-500' : ''}
-              />
-              {errors.energyTypeOther && (
-                <p className="text-sm text-red-500">{errors.energyTypeOther.message}</p>
-              )}
-            </div>
+          {selectedEnergyType === 'other' && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="energyTypeOther">Please specify energy type *</Label>
+                <Input
+                  id="energyTypeOther"
+                  {...register('energyTypeOther')}
+                  placeholder="Enter energy type..."
+                  className={errors.energyTypeOther ? 'border-red-500' : ''}
+                />
+                {errors.energyTypeOther && (
+                  <p className="text-sm text-red-500">{errors.energyTypeOther.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="unit">Unit *</Label>
+                <Select
+                  id="unit"
+                  {...register('unit')}
+                  className={errors.unit ? 'border-red-500' : ''}
+                >
+                  <option value="">Select unit...</option>
+                  {ENERGY_UNITS.map((unit) => (
+                    <option key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </option>
+                  ))}
+                </Select>
+                {errors.unit && (
+                  <p className="text-sm text-red-500">{errors.unit.message}</p>
+                )}
+              </div>
+            </>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity *</Label>
+            <Label htmlFor="quantity">
+              Quantity {selectedEnergyType && selectedEnergyType !== 'other' && (
+                <span className="text-[var(--muted-foreground)]">
+                  ({ENERGY_TYPES.find(t => t.value === selectedEnergyType)?.defaultUnit === 'litres'
+                    ? 'liters'
+                    : ENERGY_TYPES.find(t => t.value === selectedEnergyType)?.defaultUnit})
+                </span>
+              )} *
+            </Label>
             <Input
               id="quantity"
               type="number"
@@ -195,24 +239,10 @@ export function EnergyForm({ initialData, mode }: EnergyFormProps) {
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="unit">Unit *</Label>
-            <Select
-              id="unit"
-              {...register('unit')}
-              className={errors.unit ? 'border-red-500' : ''}
-            >
-              <option value="">Select unit...</option>
-              {ENERGY_UNITS.map((unit) => (
-                <option key={unit.value} value={unit.value}>
-                  {unit.label}
-                </option>
-              ))}
-            </Select>
-            {errors.unit && (
-              <p className="text-sm text-red-500">{errors.unit.message}</p>
-            )}
-          </div>
+          {/* Hidden unit field for non-other types */}
+          {selectedEnergyType && selectedEnergyType !== 'other' && (
+            <input type="hidden" {...register('unit')} />
+          )}
         </CardContent>
       </Card>
 

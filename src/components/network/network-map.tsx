@@ -6,6 +6,7 @@ import type { MapMouseEvent, MarkerEvent } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Factory, Leaf, ArrowDownToLine } from 'lucide-react';
 import { format } from 'date-fns';
+import { QRDisplay } from '@/components/qr/qr-display';
 
 interface PlantData {
   plantName: string;
@@ -338,52 +339,61 @@ export function NetworkMap({
             closeOnClick={false}
             className="network-popup"
           >
-            <div className="p-1 min-w-[180px]">
+            <div className="min-w-[140px]">
               {popupInfo.type === 'plant' && (
                 <div>
                   <p className="font-medium text-sm">{(popupInfo.data as PlantData).plantName}</p>
                   {(popupInfo.data as PlantData).address && (
-                    <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 leading-tight">
                       {(popupInfo.data as PlantData).address}
                     </p>
                   )}
-                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                    Production Facility
-                  </p>
                 </div>
               )}
               {popupInfo.type === 'feedstock' && (
-                <div>
-                  <p className="font-medium text-sm capitalize">
-                    {(popupInfo.data as FeedstockSource).feedstockType.replace('_', ' ')}
-                  </p>
-                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                    {format(new Date((popupInfo.data as FeedstockSource).date), 'MMM d, yyyy')}
-                  </p>
-                  {(popupInfo.data as FeedstockSource).weightTonnes && (
-                    <p className="text-xs mt-1">
-                      {(popupInfo.data as FeedstockSource).weightTonnes?.toFixed(2)} tonnes
+                <div className="flex gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm capitalize leading-tight">
+                      {(popupInfo.data as FeedstockSource).feedstockType.replace('_', ' ')}
                     </p>
-                  )}
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    {(popupInfo.data as FeedstockSource).deliveryDistanceKm} km
-                  </p>
+                    <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
+                      {format(new Date((popupInfo.data as FeedstockSource).date), 'MMM d, yyyy')}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 text-[11px]">
+                      {(popupInfo.data as FeedstockSource).weightTonnes && (
+                        <span className="font-medium">{(popupInfo.data as FeedstockSource).weightTonnes?.toFixed(1)}t</span>
+                      )}
+                      <span className="text-[var(--muted-foreground)]">{(popupInfo.data as FeedstockSource).deliveryDistanceKm.toFixed(2)}km</span>
+                    </div>
+                  </div>
+                  <QRDisplay
+                    entityType="feedstock"
+                    entityId={(popupInfo.data as FeedstockSource).id}
+                    size="xs"
+                    showActions={false}
+                  />
                 </div>
               )}
               {popupInfo.type === 'destination' && (
-                <div>
-                  <p className="font-medium text-sm capitalize">
-                    {(popupInfo.data as Destination).sequestrationType.replace('_', ' ')}
-                  </p>
-                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                    {format(new Date((popupInfo.data as Destination).finalDeliveryDate), 'MMM d, yyyy')}
-                  </p>
-                  <p className="text-xs mt-1">
-                    {(popupInfo.data as Destination).quantityTonnes.toFixed(2)} tonnes
-                  </p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    {(popupInfo.data as Destination).deliveryPostcode}
-                  </p>
+                <div className="flex gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm capitalize leading-tight">
+                      {(popupInfo.data as Destination).sequestrationType.replace('_', ' ')}
+                    </p>
+                    <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
+                      {format(new Date((popupInfo.data as Destination).finalDeliveryDate), 'MMM d, yyyy')}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 text-[11px]">
+                      <span className="font-medium">{(popupInfo.data as Destination).quantityTonnes.toFixed(1)}t</span>
+                      <span className="text-[var(--muted-foreground)]">{(popupInfo.data as Destination).deliveryPostcode}</span>
+                    </div>
+                  </div>
+                  <QRDisplay
+                    entityType="sequestration"
+                    entityId={(popupInfo.data as Destination).id}
+                    size="xs"
+                    showActions={false}
+                  />
                 </div>
               )}
             </div>
@@ -456,6 +466,15 @@ export function NetworkMap({
                       </a>
                     </div>
                   )}
+                  {/* QR Code */}
+                  <div className="pt-2 mt-2 border-t flex justify-center">
+                    <QRDisplay
+                      entityType="feedstock"
+                      entityId={(selectedRoute.data as FeedstockSource).id}
+                      size="xs"
+                      showActions={false}
+                    />
+                  </div>
                 </div>
               )}
               {selectedRoute.type === 'destination' && (
@@ -480,6 +499,15 @@ export function NetworkMap({
                       <p className="text-[var(--muted-foreground)]">Quantity</p>
                       <p className="font-medium">{(selectedRoute.data as Destination).quantityTonnes.toFixed(2)} t</p>
                     </div>
+                  </div>
+                  {/* QR Code */}
+                  <div className="pt-2 mt-2 border-t flex justify-center">
+                    <QRDisplay
+                      entityType="sequestration"
+                      entityId={(selectedRoute.data as Destination).id}
+                      size="xs"
+                      showActions={false}
+                    />
                   </div>
                 </div>
               )}

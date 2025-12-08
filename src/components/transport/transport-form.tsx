@@ -8,6 +8,8 @@ import {
   createTransportEventSchema,
   TransportEventInput,
   TRANSPORT_FUEL_TYPES,
+  DEFAULT_ORIGIN_ADDRESS,
+  DEFAULT_ORIGIN_COORDS,
 } from '@/lib/validations/transport';
 import {
   Button,
@@ -21,6 +23,7 @@ import {
   Textarea,
   Spinner,
 } from '@/components/ui';
+import { AddressSearch } from '@/components/network';
 
 interface TransportFormProps {
   initialData?: TransportEventInput & { id?: string };
@@ -32,6 +35,35 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Origin location state - default to Garanti Karadeniz plant
+  const [originLocation, setOriginLocation] = useState<{
+    address: string;
+    coordinates: [number, number];
+  } | null>(
+    initialData?.originAddress
+      ? {
+          address: initialData.originAddress,
+          coordinates: [initialData.originLng, initialData.originLat],
+        }
+      : {
+          address: DEFAULT_ORIGIN_ADDRESS,
+          coordinates: [DEFAULT_ORIGIN_COORDS.lng, DEFAULT_ORIGIN_COORDS.lat],
+        }
+  );
+
+  // Destination location state
+  const [destinationLocation, setDestinationLocation] = useState<{
+    address: string;
+    coordinates: [number, number];
+  } | null>(
+    initialData?.destinationAddress && initialData?.destinationLat && initialData?.destinationLng
+      ? {
+          address: initialData.destinationAddress,
+          coordinates: [initialData.destinationLng, initialData.destinationLat],
+        }
+      : null
+  );
+
   const formatDateForInput = (date: Date | string | undefined) => {
     if (!date) return '';
     const d = new Date(date);
@@ -42,6 +74,7 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(createTransportEventSchema),
@@ -52,6 +85,12 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
         }
       : {
           date: formatDateForInput(new Date()),
+          originAddress: DEFAULT_ORIGIN_ADDRESS,
+          originLat: DEFAULT_ORIGIN_COORDS.lat,
+          originLng: DEFAULT_ORIGIN_COORDS.lng,
+          destinationAddress: '',
+          destinationLat: 0,
+          destinationLng: 0,
           distanceKm: 0,
           vehicleId: '',
           vehicleDescription: '',
@@ -64,6 +103,34 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
           notes: '',
         },
   });
+
+  // Handle origin location change
+  const handleOriginChange = (result: { address: string; coordinates: [number, number] } | null) => {
+    setOriginLocation(result);
+    if (result) {
+      setValue('originAddress', result.address);
+      setValue('originLat', result.coordinates[1]);
+      setValue('originLng', result.coordinates[0]);
+    } else {
+      setValue('originAddress', '');
+      setValue('originLat', 0);
+      setValue('originLng', 0);
+    }
+  };
+
+  // Handle destination location change
+  const handleDestinationChange = (result: { address: string; coordinates: [number, number] } | null) => {
+    setDestinationLocation(result);
+    if (result) {
+      setValue('destinationAddress', result.address);
+      setValue('destinationLat', result.coordinates[1]);
+      setValue('destinationLng', result.coordinates[0]);
+    } else {
+      setValue('destinationAddress', '');
+      setValue('destinationLat', 0);
+      setValue('destinationLng', 0);
+    }
+  };
 
   const onSubmit = async (data: TransportEventInput) => {
     setIsSubmitting(true);
@@ -122,20 +189,75 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
             )}
           </div>
 
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="cargoDescription">Cargo Description</Label>
+            <Input
+              id="cargoDescription"
+              {...register('cargoDescription')}
+              placeholder="e.g., Biochar delivery to application site"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Route</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
           <div className="space-y-2">
-            <Label htmlFor="distanceKm">Distance (km) *</Label>
+            <Label>Origin *</Label>
+            <AddressSearch
+              value={originLocation}
+              onChange={handleOriginChange}
+              placeholder="Search for origin address..."
+              error={errors.originAddress?.message}
+            />
+            {/* Hidden fields for form submission */}
+            <input type="hidden" {...register('originAddress')} />
+            <input type="hidden" {...register('originLat')} />
+            <input type="hidden" {...register('originLng')} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Destination *</Label>
+            <AddressSearch
+              value={destinationLocation}
+              onChange={handleDestinationChange}
+              placeholder="Search for destination address..."
+              error={errors.destinationAddress?.message}
+            />
+            {/* Hidden fields for form submission */}
+            <input type="hidden" {...register('destinationAddress')} />
+            <input type="hidden" {...register('destinationLat')} />
+            <input type="hidden" {...register('destinationLng')} />
+          </div>
+
+          <div className="space-y-2 md:w-1/2">
+            <Label htmlFor="distanceKm">Distance (km)</Label>
             <Input
               id="distanceKm"
               type="number"
               step="0.1"
               {...register('distanceKm')}
+              placeholder="Auto-calculated or enter manually"
               className={errors.distanceKm ? 'border-red-500' : ''}
             />
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Leave at 0 to auto-calculate based on route
+            </p>
             {errors.distanceKm && (
               <p className="text-sm text-red-500">{errors.distanceKm.message}</p>
             )}
           </div>
+        </CardContent>
+      </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Vehicle Information</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="vehicleId">Vehicle ID</Label>
             <Input
@@ -151,15 +273,6 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
               id="vehicleDescription"
               {...register('vehicleDescription')}
               placeholder="e.g., 20t Truck"
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="cargoDescription">Cargo Description</Label>
-            <Input
-              id="cargoDescription"
-              {...register('cargoDescription')}
-              placeholder="e.g., Biochar delivery to application site"
             />
           </div>
         </CardContent>

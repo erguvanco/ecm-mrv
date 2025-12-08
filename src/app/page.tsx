@@ -10,12 +10,15 @@ import {
   Plus,
   ArrowRight,
   Award,
+  Scale,
+  TreePine,
+  type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { OnboardingBanner, WorkflowIndicator } from '@/components/ui';
 import type { OnboardingStep, WorkflowStep } from '@/components/ui';
-import { DashboardMap } from '@/components/dashboard';
+import { DashboardMap, DashboardChart } from '@/components/dashboard';
 import db from '@/lib/db';
 
 async function getStats() {
@@ -82,11 +85,32 @@ async function getStats() {
 export default async function DashboardPage() {
   const stats = await getStats();
 
-  const metrics = [
-    { label: 'Feedstock Deliveries', value: stats.feedstockCount },
-    { label: 'Production Batches', value: stats.productionCount },
-    { label: 'Biochar Produced', value: `${stats.totalBiochar.toFixed(1)}t` },
-    { label: 'CO₂e Removed', value: `${stats.estimatedCO2e.toFixed(1)}t` },
+  const metrics: { label: string; value: string | number; icon: LucideIcon; description?: string; highlight?: boolean }[] = [
+    {
+      label: 'Feedstock Deliveries',
+      value: stats.feedstockCount,
+      icon: Leaf,
+      description: 'Total incoming biomass'
+    },
+    {
+      label: 'Production Batches',
+      value: stats.productionCount,
+      icon: Factory,
+      description: `${stats.productionCompleteCount} completed`
+    },
+    {
+      label: 'Biochar Produced',
+      value: `${stats.totalBiochar.toFixed(1)}t`,
+      icon: Scale,
+      description: 'Total output weight'
+    },
+    {
+      label: 'CO₂e Sequestered',
+      value: `${stats.estimatedCO2e.toFixed(1)}t`,
+      icon: TreePine,
+      description: 'Estimated carbon removal',
+      highlight: true
+    },
   ];
 
   const modules = [
@@ -173,16 +197,38 @@ export default async function DashboardPage() {
 
       {/* Metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((metric) => (
-          <Card key={metric.label} className="border-[var(--border)]">
-            <CardContent className="pt-6">
-              <p className="text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-                {metric.label}
-              </p>
-              <p className="text-2xl font-medium mt-1">{metric.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {metrics.map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <Card
+              key={metric.label}
+              className={`border-[var(--border)] transition-all hover:shadow-md ${
+                metric.highlight ? 'bg-green-50 border-green-200' : ''
+              }`}
+            >
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
+                      {metric.label}
+                    </p>
+                    <p className={`text-2xl font-semibold mt-1 ${metric.highlight ? 'text-green-700' : ''}`}>
+                      {metric.value}
+                    </p>
+                    {metric.description && (
+                      <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                        {metric.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`p-2 ${metric.highlight ? 'bg-green-100' : 'bg-[var(--muted)]'}`}>
+                    <Icon className={`h-5 w-5 ${metric.highlight ? 'text-green-600' : 'text-[var(--muted-foreground)]'}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Quick Actions & Modules */}
@@ -256,6 +302,9 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Activity Chart */}
+      <DashboardChart />
 
       {/* Supply Network Map */}
       <DashboardMap />

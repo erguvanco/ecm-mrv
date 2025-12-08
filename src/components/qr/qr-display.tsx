@@ -11,12 +11,13 @@ interface QRDisplayProps {
   entityType: EntityType;
   entityId: string;
   entityLabel?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   showActions?: boolean;
   className?: string;
 }
 
 const SIZE_MAP = {
+  xs: 64,  // Extra small for map popups
   sm: 128,
   md: 200,
   lg: 256,

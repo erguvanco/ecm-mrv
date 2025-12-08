@@ -50,12 +50,12 @@ export const ENERGY_SCOPES = [
 ] as const;
 
 export const ENERGY_TYPES = [
-  { value: 'electricity', label: 'Electricity' },
-  { value: 'diesel', label: 'Diesel' },
-  { value: 'gas', label: 'Natural Gas' },
-  { value: 'propane', label: 'Propane' },
-  { value: 'biomass', label: 'Biomass' },
-  { value: 'other', label: 'Other' },
+  { value: 'electricity', label: 'Electricity', defaultUnit: 'kWh' },
+  { value: 'diesel', label: 'Diesel', defaultUnit: 'litres' },
+  { value: 'gas', label: 'Natural Gas', defaultUnit: 'm3' },
+  { value: 'propane', label: 'Propane', defaultUnit: 'kg' },
+  { value: 'biomass', label: 'Biomass', defaultUnit: 'kg' },
+  { value: 'other', label: 'Other', defaultUnit: null },
 ] as const;
 
 export const ENERGY_UNITS = [
@@ -64,3 +64,9 @@ export const ENERGY_UNITS = [
   { value: 'm3', label: 'm³' },
   { value: 'kg', label: 'kg' },
 ] as const;
+
+// Get default unit for energy type
+export const getDefaultUnitForEnergyType = (energyType: string): string | null => {
+  const type = ENERGY_TYPES.find(t => t.value === energyType);
+  return type?.defaultUnit ?? null;
+};

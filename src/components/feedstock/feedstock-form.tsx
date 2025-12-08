@@ -7,7 +7,8 @@ import { useState } from 'react';
 import {
   createFeedstockDeliverySchema,
   FeedstockDeliveryInput,
-  FEEDSTOCK_TYPES,
+  FEEDSTOCK_TYPE_GROUPS,
+  VEHICLE_TYPES,
   FUEL_TYPES,
 } from '@/lib/validations/feedstock';
 import {
@@ -22,7 +23,11 @@ import {
   Textarea,
   Spinner,
   HelpTooltip,
+  FileUpload,
+  UploadedFile,
+  Alert,
 } from '@/components/ui';
+import { Leaf, MapPin, Truck, FileText, StickyNote } from 'lucide-react';
 import { AddressSearch } from '@/components/network';
 
 interface FeedstockFormProps {
@@ -34,6 +39,7 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [evidenceFiles, setEvidenceFiles] = useState<UploadedFile[]>([]);
   const [sourceLocation, setSourceLocation] = useState<{
     address: string;
     coordinates: [number, number];
@@ -51,7 +57,7 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm({
     resolver: zodResolver(createFeedstockDeliverySchema),
     defaultValues: initialData
@@ -104,10 +110,21 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
           : `/api/feedstock/${initialData?.id}`;
       const method = mode === 'create' ? 'POST' : 'PUT';
 
+      // Include evidence file metadata in the request
+      const evidenceMetadata = evidenceFiles.map((f) => ({
+        fileName: f.fileName,
+        fileSize: f.fileSize,
+        mimeType: f.mimeType,
+        category: f.category,
+      }));
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          evidenceFiles: evidenceMetadata,
+        }),
       });
 
       if (!response.ok) {
@@ -124,17 +141,30 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
     }
   };
 
+  const errorCount = Object.keys(errors).length;
+
   return (
     <form onSubmit={handleSubmit(onSubmit as unknown as Parameters<typeof handleSubmit>[0])} className="space-y-6">
       {error && (
-        <div className="bg-red-50 p-4 text-red-700 border border-red-200">
+        <Alert variant="error" title="Error">
           {error}
-        </div>
+        </Alert>
+      )}
+
+      {isSubmitted && errorCount > 0 && (
+        <Alert variant="warning" title="Please fill in all required fields">
+          {errorCount} required {errorCount === 1 ? 'field is' : 'fields are'} missing or invalid. Please check the highlighted fields below.
+        </Alert>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Delivery Details</CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center bg-[var(--muted)]">
+              <Leaf className="h-4.5 w-4.5 text-[var(--muted-foreground)]" />
+            </div>
+            <CardTitle className="text-lg">Delivery Details</CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -161,10 +191,14 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
               className={errors.feedstockType ? 'border-red-500' : ''}
             >
               <option value="">Select type...</option>
-              {FEEDSTOCK_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
+              {FEEDSTOCK_TYPE_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
             {errors.feedstockType && (
@@ -192,7 +226,7 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="weightTonnes">Weight (tonnes)</Label>
+            <Label htmlFor="weightTonnes">Weight (tonnes) *</Label>
             <Input
               id="weightTonnes"
               type="number"
@@ -225,7 +259,12 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Source Location *</CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center bg-[var(--muted)]">
+              <MapPin className="h-4.5 w-4.5 text-[var(--muted-foreground)]" />
+            </div>
+            <CardTitle className="text-lg">Source Location</CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -252,33 +291,60 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Transport Information</CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center bg-[var(--muted)]">
+              <Truck className="h-4.5 w-4.5 text-[var(--muted-foreground)]" />
+            </div>
+            <CardTitle className="text-lg">Transport Information</CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="vehicleId">Vehicle ID</Label>
+            <Label htmlFor="vehicleId">Vehicle ID *</Label>
             <Input
               id="vehicleId"
               {...register('vehicleId')}
               placeholder="e.g., ABC-123"
+              className={errors.vehicleId ? 'border-red-500' : ''}
             />
+            {errors.vehicleId && (
+              <p className="text-sm text-red-500">
+                {errors.vehicleId.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vehicleDescription">Vehicle Description</Label>
-            <Input
+            <Label htmlFor="vehicleDescription">Vehicle Type *</Label>
+            <Select
               id="vehicleDescription"
               {...register('vehicleDescription')}
-              placeholder="e.g., 20t Truck"
-            />
+              className={errors.vehicleDescription ? 'border-red-500' : ''}
+            >
+              <option value="">Select vehicle type...</option>
+              {VEHICLE_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </Select>
+            {errors.vehicleDescription && (
+              <p className="text-sm text-red-500">
+                {errors.vehicleDescription.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
-              <Label htmlFor="fuelType">Fuel Type</Label>
+              <Label htmlFor="fuelType">Fuel Type *</Label>
               <HelpTooltip content="Different fuel types have different emission factors" />
             </div>
-            <Select id="fuelType" {...register('fuelType')}>
+            <Select
+              id="fuelType"
+              {...register('fuelType')}
+              className={errors.fuelType ? 'border-red-500' : ''}
+            >
               <option value="">Select fuel type...</option>
               {FUEL_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -286,6 +352,11 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
                 </option>
               ))}
             </Select>
+            {errors.fuelType && (
+              <p className="text-sm text-red-500">
+                {errors.fuelType.message}
+              </p>
+            )}
           </div>
 
           {watch('fuelType') === 'other' && (
@@ -306,7 +377,7 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="fuelAmount">Fuel Amount (liters)</Label>
+            <Label htmlFor="fuelAmount">Fuel Amount (liters) *</Label>
             <Input
               id="fuelAmount"
               type="number"
@@ -325,7 +396,33 @@ export function FeedstockForm({ initialData, mode }: FeedstockFormProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Additional Information</CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center bg-[var(--muted)]">
+              <FileText className="h-4.5 w-4.5 text-[var(--muted-foreground)]" />
+            </div>
+            <CardTitle className="text-lg">Evidence Documents</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-[var(--muted-foreground)] mb-4">
+            Upload supporting documents such as sustainability certificates, delivery notes, weight tickets, or invoices.
+          </p>
+          <FileUpload
+            files={evidenceFiles}
+            onChange={setEvidenceFiles}
+            disabled={isSubmitting}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center bg-[var(--muted)]">
+              <StickyNote className="h-4.5 w-4.5 text-[var(--muted-foreground)]" />
+            </div>
+            <CardTitle className="text-lg">Additional Information</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">

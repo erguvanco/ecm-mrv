@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -108,6 +108,14 @@ export function SequestrationWizard({
     initialData: initialData || { storageBeforeDelivery: false },
   });
 
+  // Track previous validation state to prevent infinite loops
+  const prevValidationRef = useRef<{
+    step1: boolean;
+    step2: boolean;
+    step3: boolean;
+    step4: boolean;
+  } | null>(null);
+
   // Update steps when storage flag changes
   useEffect(() => {
     if (isInitialized) {
@@ -153,6 +161,71 @@ export function SequestrationWizard({
       sequestrationTypeOther: '',
     },
   });
+
+  // Watch form values for validation
+  const storageLocation = step2Form.watch('storageLocation');
+  const storageStartDate = step2Form.watch('storageStartDate');
+  const storageEndDate = step2Form.watch('storageEndDate');
+  const finalDeliveryDate = step4Form.watch('finalDeliveryDate');
+  const deliveryPostcode = step4Form.watch('deliveryPostcode');
+  const sequestrationType = step4Form.watch('sequestrationType');
+
+  // Validate steps when data changes
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    // Step 1 is always valid (just a checkbox)
+    const step1Valid = true;
+
+    // Step 2 (storage details) - only validate if storage is enabled
+    const step2Valid = !data.storageBeforeDelivery || (
+      !!storageLocation?.trim() &&
+      !!storageStartDate &&
+      !!storageEndDate
+    );
+
+    // Step 3 (batch linkage) - valid if at least one batch is selected
+    const step3Valid = selectedBatches.length > 0;
+
+    // Step 4 (delivery info) - all required fields filled
+    const step4Valid = !!finalDeliveryDate && !!deliveryPostcode?.trim() && !!sequestrationType;
+
+    const prev = prevValidationRef.current;
+
+    // Only update if validation status has actually changed
+    if (
+      !prev ||
+      step1Valid !== prev.step1 ||
+      step2Valid !== prev.step2 ||
+      step3Valid !== prev.step3 ||
+      step4Valid !== prev.step4
+    ) {
+      prevValidationRef.current = { step1: step1Valid, step2: step2Valid, step3: step3Valid, step4: step4Valid };
+
+      const newSteps = steps.map((step) => {
+        if (step.id === '1') return { ...step, isValid: step1Valid };
+        if (step.id === '2') return { ...step, isValid: step2Valid };
+        if (step.id === '3') return { ...step, isValid: step3Valid };
+        if (step.id === '4') return { ...step, isValid: step4Valid };
+        if (step.id === '5') return { ...step, isValid: true, isOptional: true };
+        if (step.id === '6') return { ...step, isValid: true, isOptional: true };
+        return step;
+      });
+      updateSteps(newSteps);
+    }
+  }, [
+    isInitialized,
+    data.storageBeforeDelivery,
+    storageLocation,
+    storageStartDate,
+    storageEndDate,
+    selectedBatches.length,
+    finalDeliveryDate,
+    deliveryPostcode,
+    sequestrationType,
+    steps,
+    updateSteps,
+  ]);
 
   // Get current step ID based on whether storage is enabled
   const getCurrentStepId = () => {

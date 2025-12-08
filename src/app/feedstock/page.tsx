@@ -9,7 +9,17 @@ import { FeedstockTable } from '@/components/feedstock';
 async function getFeedstocks() {
   return db.feedstockDelivery.findMany({
     orderBy: { date: 'desc' },
-    include: {
+    select: {
+      id: true,
+      serialNumber: true,
+      date: true,
+      feedstockType: true,
+      weightTonnes: true,
+      volumeM3: true,
+      deliveryDistanceKm: true,
+      vehicleId: true,
+      sourceAddress: true,
+      updatedAt: true,
       evidence: { select: { id: true } },
       _count: {
         select: {
