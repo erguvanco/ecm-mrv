@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
             productionBatchId: batch.id,
             feedstockDeliveryId: allocation.feedstockDeliveryId,
             percentageUsed: allocation.percentageUsed,
-            weightUsedTonnes: deliveryWeightMap.get(allocation.feedstockDeliveryId)
+            weightUsedTonnes: deliveryWeightMap.get(allocation.feedstockDeliveryId) !== undefined
               ? (deliveryWeightMap.get(allocation.feedstockDeliveryId)! * allocation.percentageUsed) / 100
               : null,
           })),
