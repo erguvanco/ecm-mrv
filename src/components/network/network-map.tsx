@@ -1,37 +1,14 @@
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
-import type { MapMouseEvent, MarkerEvent } from 'react-map-gl/mapbox';
 import { Factory, Leaf, ArrowDownToLine, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { QRDisplay } from '@/components/qr/qr-display';
 
-// Dynamic import for mapbox components to prevent SSR issues
-const Map = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.default),
-  { ssr: false }
-);
-const Marker = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.Marker),
-  { ssr: false }
-);
-const Popup = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.Popup),
-  { ssr: false }
-);
-const Source = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.Source),
-  { ssr: false }
-);
-const Layer = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.Layer),
-  { ssr: false }
-);
-const NavigationControl = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.NavigationControl),
-  { ssr: false }
-);
+// Import mapbox components - will only render client-side due to isMounted check
+import Map, { Marker, Popup, Source, Layer, NavigationControl } from 'react-map-gl/mapbox';
+import type { MapMouseEvent, MarkerEvent } from 'react-map-gl/mapbox';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface PlantData {
   plantName: string;
@@ -100,10 +77,8 @@ export function NetworkMap({
   const [selectedRoute, setSelectedRoute] = useState<SelectedRoute>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Load mapbox CSS only on client side
+  // Set mounted state for client-side only rendering
   useEffect(() => {
-    // @ts-ignore - CSS import
-    import('mapbox-gl/dist/mapbox-gl.css');
     setIsMounted(true);
   }, []);
 
