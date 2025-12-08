@@ -24,20 +24,24 @@ async function getTransportEvents() {
 
 async function getStats() {
   const events = await db.transportEvent.findMany({
-    select: { distanceKm: true, fuelAmount: true, fuelType: true },
+    select: { distanceKm: true, fuelAmount: true, fuelType: true, originAddress: true, destinationAddress: true },
   });
 
   const totalDistance = events.reduce((sum, e) => sum + (e.distanceKm || 0), 0);
   const totalFuel = events.reduce((sum, e) => sum + (e.fuelAmount || 0), 0);
-  const uniqueRoutes = await db.transportEvent.groupBy({
-    by: ['originAddress', 'destinationAddress'],
-  });
+
+  // Calculate unique routes without groupBy (which can fail with nullable fields)
+  const routeSet = new Set(
+    events
+      .filter(e => e.originAddress && e.destinationAddress)
+      .map(e => `${e.originAddress}|${e.destinationAddress}`)
+  );
 
   return {
     count: events.length,
     totalDistance,
     totalFuel,
-    uniqueRoutes: uniqueRoutes.length,
+    uniqueRoutes: routeSet.size,
   };
 }
 
