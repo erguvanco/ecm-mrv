@@ -1,12 +1,37 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import Map, { Marker, Popup, Source, Layer, NavigationControl } from 'react-map-gl/mapbox';
+import { useCallback, useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import type { MapMouseEvent, MarkerEvent } from 'react-map-gl/mapbox';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { Factory, Leaf, ArrowDownToLine } from 'lucide-react';
+import { Factory, Leaf, ArrowDownToLine, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { QRDisplay } from '@/components/qr/qr-display';
+
+// Dynamic import for mapbox components to prevent SSR issues
+const Map = dynamic(
+  () => import('react-map-gl/mapbox').then((mod) => mod.default),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import('react-map-gl/mapbox').then((mod) => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import('react-map-gl/mapbox').then((mod) => mod.Popup),
+  { ssr: false }
+);
+const Source = dynamic(
+  () => import('react-map-gl/mapbox').then((mod) => mod.Source),
+  { ssr: false }
+);
+const Layer = dynamic(
+  () => import('react-map-gl/mapbox').then((mod) => mod.Layer),
+  { ssr: false }
+);
+const NavigationControl = dynamic(
+  () => import('react-map-gl/mapbox').then((mod) => mod.NavigationControl),
+  { ssr: false }
+);
 
 interface PlantData {
   plantName: string;
@@ -73,6 +98,26 @@ export function NetworkMap({
 }: NetworkMapProps) {
   const [popupInfo, setPopupInfo] = useState<PopupInfo>(null);
   const [selectedRoute, setSelectedRoute] = useState<SelectedRoute>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Load mapbox CSS only on client side
+  useEffect(() => {
+    // @ts-ignore - CSS import
+    import('mapbox-gl/dist/mapbox-gl.css');
+    setIsMounted(true);
+  }, []);
+
+  // Show loading state until mounted (prevents SSR issues)
+  if (!isMounted) {
+    return (
+      <div className="relative h-full w-full rounded border overflow-hidden flex items-center justify-center bg-muted/20">
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="text-sm">Loading map...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate bounds to fit all markers
   const allPoints = [
