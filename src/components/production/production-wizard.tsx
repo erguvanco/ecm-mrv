@@ -22,17 +22,25 @@ import {
   CardContent,
   Badge,
   Button,
+  FileUpload,
+  UploadedFile,
 } from '@/components/ui';
 import {
   productionStep1Schema,
-  productionStep2Schema,
   productionStep3Schema,
   productionStep4Schema,
   productionStep5Schema,
   PRODUCTION_WIZARD_STEPS,
   FeedstockAllocation,
 } from '@/lib/validations/production';
-import { Plus, X } from 'lucide-react';
+import { FEEDSTOCK_TYPES } from '@/lib/validations/feedstock';
+import { Plus, X, ChevronDown, Paperclip } from 'lucide-react';
+
+// Helper to get human-readable feedstock type label
+const getFeedstockTypeLabel = (value: string): string => {
+  const type = FEEDSTOCK_TYPES.find(t => t.value === value);
+  return type?.label || value;
+};
 
 interface FeedstockOption {
   id: string;
@@ -96,13 +104,26 @@ export function ProductionWizard({
     data.feedstockAllocations || []
   );
 
+  // Evidence files per allocation (keyed by feedstockDeliveryId)
+  const [allocationEvidence, setAllocationEvidence] = useState<Record<string, UploadedFile[]>>({});
+
+  // Track which allocation's evidence section is expanded
+  const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null);
+
   // Step 1 form
+  const getDefaultDateTime = () => {
+    if (data.productionDate) {
+      const d = new Date(data.productionDate);
+      return d.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+    }
+    const now = new Date();
+    return now.toISOString().slice(0, 16);
+  };
+
   const step1Form = useForm({
     resolver: zodResolver(productionStep1Schema),
     defaultValues: {
-      productionDate: data.productionDate
-        ? new Date(data.productionDate).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0],
+      productionDate: getDefaultDateTime(),
       feedstockDeliveryId: data.feedstockDeliveryId || '',
       feedstockAllocations: data.feedstockAllocations || [],
     },
@@ -154,24 +175,16 @@ export function ProductionWizard({
     }, 0);
   }, [allocations, feedstockOptions]);
 
-  // Step 2 form
+  // Step 2 form (Output Biochar - was step 3)
   const step2Form = useForm({
-    resolver: zodResolver(productionStep2Schema),
-    defaultValues: {
-      inputFeedstockWeightTonnes: data.inputFeedstockWeightTonnes || '',
-    },
-  });
-
-  // Step 3 form
-  const step3Form = useForm({
     resolver: zodResolver(productionStep3Schema),
     defaultValues: {
       outputBiocharWeightTonnes: data.outputBiocharWeightTonnes || '',
     },
   });
 
-  // Step 4 form
-  const step4Form = useForm({
+  // Step 3 form (Temperature - was step 4)
+  const step3Form = useForm({
     resolver: zodResolver(productionStep4Schema),
     defaultValues: {
       temperatureMin: data.temperatureMin || '',
@@ -180,8 +193,8 @@ export function ProductionWizard({
     },
   });
 
-  // Step 5 form
-  const step5Form = useForm({
+  // Step 4 form (Summary - was step 5)
+  const step4Form = useForm({
     resolver: zodResolver(productionStep5Schema),
     defaultValues: {
       notes: data.notes || '',
@@ -189,15 +202,34 @@ export function ProductionWizard({
   });
 
   // Track previous validation state to prevent infinite loops
-  const prevValidationRef = useRef<{ step1: boolean; step2: boolean; step3: boolean } | null>(null);
+  const prevValidationRef = useRef<{ step1: boolean; step2: boolean } | null>(null);
+
+  // Watch form values for validation
+  const productionDateValue = step1Form.watch('productionDate');
+  const outputBiocharValue = step2Form.watch('outputBiocharWeightTonnes');
+
+  // Sync form values to wizard data for step 1 on mount and when form changes
+  useEffect(() => {
+    if (!isInitialized) return;
+    // Sync production date from form to wizard data if not already set
+    if (productionDateValue && !data.productionDate) {
+      updateData({ productionDate: productionDateValue });
+    }
+  }, [isInitialized, productionDateValue, data.productionDate, updateData]);
+
+  // Get current input weight for validation
+  const currentInputWeight = calculateTotalAllocatedWeight();
 
   // Validate steps when data changes
   useEffect(() => {
     if (!isInitialized) return;
 
-    const step1Valid = !!data.productionDate;
-    const step2Valid = data.inputFeedstockWeightTonnes != null && Number(data.inputFeedstockWeightTonnes) > 0;
-    const step3Valid = data.outputBiocharWeightTonnes != null && Number(data.outputBiocharWeightTonnes) > 0;
+    // Step 1 is valid if date is set and at least one feedstock is allocated
+    const step1Valid = !!productionDateValue && allocations.length > 0;
+
+    // Step 2 is valid if output weight is positive AND less than or equal to input weight
+    const outputWeight = Number(outputBiocharValue) || 0;
+    const step2Valid = outputWeight > 0 && outputWeight <= currentInputWeight;
 
     const prev = prevValidationRef.current;
 
@@ -205,24 +237,25 @@ export function ProductionWizard({
     if (
       !prev ||
       step1Valid !== prev.step1 ||
-      step2Valid !== prev.step2 ||
-      step3Valid !== prev.step3
+      step2Valid !== prev.step2
     ) {
-      prevValidationRef.current = { step1: step1Valid, step2: step2Valid, step3: step3Valid };
+      prevValidationRef.current = { step1: step1Valid, step2: step2Valid };
 
       const newSteps = steps.map((step) => {
         if (step.id === '1') return { ...step, isValid: step1Valid };
         if (step.id === '2') return { ...step, isValid: step2Valid };
-        if (step.id === '3') return { ...step, isValid: step3Valid };
+        if (step.id === '3') return { ...step, isValid: true, isOptional: true };
         if (step.id === '4') return { ...step, isValid: true, isOptional: true };
-        if (step.id === '5') return { ...step, isValid: true, isOptional: true };
         return step;
       });
       updateSteps(newSteps);
     }
-  }, [data.productionDate, data.inputFeedstockWeightTonnes, data.outputBiocharWeightTonnes, isInitialized, steps, updateSteps]);
+  }, [productionDateValue, allocations.length, outputBiocharValue, currentInputWeight, isInitialized, steps, updateSteps]);
 
   const handleStepChange = (newIndex: number) => {
+    // Calculate input weight from allocations
+    const inputWeight = calculateTotalAllocatedWeight();
+
     // Save current step data before changing
     if (currentStepIndex === 0) {
       const formData = step1Form.getValues();
@@ -230,26 +263,22 @@ export function ProductionWizard({
         productionDate: formData.productionDate,
         feedstockDeliveryId: formData.feedstockDeliveryId || null,
         feedstockAllocations: allocations.length > 0 ? allocations : undefined,
+        inputFeedstockWeightTonnes: inputWeight > 0 ? inputWeight : undefined,
       });
     } else if (currentStepIndex === 1) {
       const formData = step2Form.getValues();
       updateData({
-        inputFeedstockWeightTonnes: Number(formData.inputFeedstockWeightTonnes),
+        outputBiocharWeightTonnes: Number(formData.outputBiocharWeightTonnes),
       });
     } else if (currentStepIndex === 2) {
       const formData = step3Form.getValues();
-      updateData({
-        outputBiocharWeightTonnes: Number(formData.outputBiocharWeightTonnes),
-      });
-    } else if (currentStepIndex === 3) {
-      const formData = step4Form.getValues();
       updateData({
         temperatureMin: formData.temperatureMin ? Number(formData.temperatureMin) : null,
         temperatureMax: formData.temperatureMax ? Number(formData.temperatureMax) : null,
         temperatureAvg: formData.temperatureAvg ? Number(formData.temperatureAvg) : null,
       });
-    } else if (currentStepIndex === 4) {
-      const formData = step5Form.getValues();
+    } else if (currentStepIndex === 3) {
+      const formData = step4Form.getValues();
       updateData({ notes: formData.notes || null });
     }
 
@@ -257,14 +286,18 @@ export function ProductionWizard({
   };
 
   const handleComplete = async () => {
+    // Calculate input weight from allocations
+    const inputWeight = calculateTotalAllocatedWeight();
+
     // Collect all data
-    const step5Data = step5Form.getValues();
+    const step4Data = step4Form.getValues();
     const finalData = {
       ...data,
       feedstockAllocations: allocations.length > 0 ? allocations : undefined,
-      notes: step5Data.notes || null,
+      inputFeedstockWeightTonnes: inputWeight > 0 ? inputWeight : data.inputFeedstockWeightTonnes,
+      notes: step4Data.notes || null,
       status: 'complete',
-      wizardStep: 5,
+      wizardStep: 4,
     };
 
     setIsSubmitting(true);
@@ -299,16 +332,19 @@ export function ProductionWizard({
     return <div className="p-8 text-center">Loading...</div>;
   }
 
+  // Get current input weight from allocations
+  const inputWeight = calculateTotalAllocatedWeight();
+
   const renderStep = () => {
     switch (currentStepIndex) {
       case 0:
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="productionDate">Production Date *</Label>
+              <Label htmlFor="productionDate">Production Date & Time *</Label>
               <Input
                 id="productionDate"
-                type="date"
+                type="datetime-local"
                 {...step1Form.register('productionDate')}
               />
               {step1Form.formState.errors.productionDate && (
@@ -320,7 +356,7 @@ export function ProductionWizard({
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Link to Feedstock Deliveries</Label>
+                <Label>Link to Feedstock Deliveries *</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -346,6 +382,8 @@ export function ProductionWizard({
                     const allocatedWeight = selectedFeedstock?.weightTonnes
                       ? (selectedFeedstock.weightTonnes * allocation.percentageUsed) / 100
                       : 0;
+                    const isEvidenceExpanded = expandedEvidence === allocation.feedstockDeliveryId;
+                    const evidenceFiles = allocationEvidence[allocation.feedstockDeliveryId] || [];
 
                     return (
                       <Card key={index} className="border-[var(--border)]">
@@ -366,7 +404,7 @@ export function ProductionWizard({
                                     );
                                     return (
                                       <option key={fs.id} value={fs.id} disabled={isUsed}>
-                                        {formatDateTime(fs.date)} – {fs.feedstockType}
+                                        {formatDateTime(fs.date)} – {getFeedstockTypeLabel(fs.feedstockType)}
                                         {fs.weightTonnes ? ` (${fs.weightTonnes}t)` : ''}
                                         {isUsed ? ' (already selected)' : ''}
                                       </option>
@@ -399,6 +437,37 @@ export function ProductionWizard({
                                   </div>
                                 )}
                               </div>
+
+                              {/* Evidence upload toggle */}
+                              <button
+                                type="button"
+                                onClick={() => setExpandedEvidence(isEvidenceExpanded ? null : allocation.feedstockDeliveryId)}
+                                className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                              >
+                                <Paperclip className="h-3 w-3" />
+                                <span>
+                                  {evidenceFiles.length > 0
+                                    ? `${evidenceFiles.length} evidence file${evidenceFiles.length > 1 ? 's' : ''}`
+                                    : 'Add evidence (optional)'}
+                                </span>
+                                <ChevronDown className={`h-3 w-3 transition-transform ${isEvidenceExpanded ? 'rotate-180' : ''}`} />
+                              </button>
+
+                              {/* Evidence upload section */}
+                              {isEvidenceExpanded && (
+                                <div className="pt-2 border-t border-[var(--border)]">
+                                  <FileUpload
+                                    files={evidenceFiles}
+                                    onChange={(files) => {
+                                      setAllocationEvidence(prev => ({
+                                        ...prev,
+                                        [allocation.feedstockDeliveryId]: files,
+                                      }));
+                                    }}
+                                    maxFiles={5}
+                                  />
+                                </div>
+                              )}
                             </div>
                             <Button
                               type="button"
@@ -418,10 +487,10 @@ export function ProductionWizard({
                   {/* Total allocated weight summary */}
                   <div className="flex justify-between items-center pt-2 border-t border-[var(--border)]">
                     <span className="text-sm text-[var(--muted-foreground)]">
-                      Total Allocated Weight
+                      Total Input Weight
                     </span>
                     <Badge variant="secondary" className="text-sm">
-                      {calculateTotalAllocatedWeight().toFixed(2)} tonnes
+                      {inputWeight.toFixed(2)} tonnes
                     </Badge>
                   </div>
                 </div>
@@ -431,32 +500,8 @@ export function ProductionWizard({
         );
 
       case 1:
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="inputFeedstockWeightTonnes">
-                Input Feedstock Weight (tonnes) *
-              </Label>
-              <Input
-                id="inputFeedstockWeightTonnes"
-                type="number"
-                step="0.01"
-                {...step2Form.register('inputFeedstockWeightTonnes')}
-              />
-              {step2Form.formState.errors.inputFeedstockWeightTonnes && (
-                <p className="text-sm text-red-500">
-                  {step2Form.formState.errors.inputFeedstockWeightTonnes.message}
-                </p>
-              )}
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Enter the total weight of feedstock input for this production
-              batch.
-            </p>
-          </div>
-        );
-
-      case 2:
+        const outputValue = Number(outputBiocharValue) || 0;
+        const exceedsInput = outputValue > 0 && outputValue > inputWeight;
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -467,24 +512,30 @@ export function ProductionWizard({
                 id="outputBiocharWeightTonnes"
                 type="number"
                 step="0.01"
-                {...step3Form.register('outputBiocharWeightTonnes')}
+                max={inputWeight}
+                {...step2Form.register('outputBiocharWeightTonnes')}
               />
-              {step3Form.formState.errors.outputBiocharWeightTonnes && (
+              {step2Form.formState.errors.outputBiocharWeightTonnes && (
                 <p className="text-sm text-red-500">
-                  {step3Form.formState.errors.outputBiocharWeightTonnes.message}
+                  {step2Form.formState.errors.outputBiocharWeightTonnes.message}
+                </p>
+              )}
+              {exceedsInput && (
+                <p className="text-sm text-red-500">
+                  Output weight cannot exceed input weight ({inputWeight.toFixed(2)} tonnes)
                 </p>
               )}
             </div>
-            {data.inputFeedstockWeightTonnes && (
+            {inputWeight > 0 && (
               <p className="text-sm text-[var(--muted-foreground)]">
-                Input weight: {data.inputFeedstockWeightTonnes} tonnes. Typical
+                Input weight from feedstock: {inputWeight.toFixed(2)} tonnes. Typical
                 conversion rates are 20-30%.
               </p>
             )}
           </div>
         );
 
-      case 3:
+      case 2:
         return (
           <div className="space-y-4">
             <p className="text-sm text-[var(--muted-foreground)]">
@@ -497,7 +548,7 @@ export function ProductionWizard({
                   id="temperatureMin"
                   type="number"
                   step="1"
-                  {...step4Form.register('temperatureMin')}
+                  {...step3Form.register('temperatureMin')}
                 />
               </div>
               <div className="space-y-2">
@@ -506,7 +557,7 @@ export function ProductionWizard({
                   id="temperatureMax"
                   type="number"
                   step="1"
-                  {...step4Form.register('temperatureMax')}
+                  {...step3Form.register('temperatureMax')}
                 />
               </div>
               <div className="space-y-2">
@@ -515,21 +566,21 @@ export function ProductionWizard({
                   id="temperatureAvg"
                   type="number"
                   step="1"
-                  {...step4Form.register('temperatureAvg')}
+                  {...step3Form.register('temperatureAvg')}
                 />
               </div>
             </div>
           </div>
         );
 
-      case 4:
+      case 3:
         return (
           <div className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
-                {...step5Form.register('notes')}
+                {...step4Form.register('notes')}
                 placeholder="Any additional notes about this production batch..."
                 rows={3}
               />
@@ -577,24 +628,14 @@ export function ProductionWizard({
                           );
                         })}
                         <div className="flex justify-between text-xs font-medium pt-1 border-t border-[var(--border)]">
-                          <span>Total Allocated</span>
-                          <span>{calculateTotalAllocatedWeight().toFixed(2)} tonnes</span>
+                          <span>Total Input Weight</span>
+                          <span>{inputWeight.toFixed(2)} tonnes</span>
                         </div>
                       </div>
                     </div>
                   )}
 
                   <div className="flex justify-between pt-2 border-t border-[var(--border)] mt-2">
-                    <span className="text-[var(--muted-foreground)]">
-                      Input Weight
-                    </span>
-                    <span>
-                      {data.inputFeedstockWeightTonnes
-                        ? `${data.inputFeedstockWeightTonnes} tonnes`
-                        : '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-[var(--muted-foreground)]">
                       Output Weight
                     </span>
@@ -604,7 +645,7 @@ export function ProductionWizard({
                         : '-'}
                     </span>
                   </div>
-                  {data.inputFeedstockWeightTonnes &&
+                  {inputWeight > 0 &&
                     data.outputBiocharWeightTonnes && (
                       <div className="flex justify-between">
                         <span className="text-[var(--muted-foreground)]">
@@ -612,8 +653,8 @@ export function ProductionWizard({
                         </span>
                         <Badge variant="secondary">
                           {(
-                            (data.outputBiocharWeightTonnes /
-                              data.inputFeedstockWeightTonnes) *
+                            (Number(data.outputBiocharWeightTonnes) /
+                              inputWeight) *
                             100
                           ).toFixed(1)}
                           %

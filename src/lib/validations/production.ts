@@ -55,9 +55,8 @@ export type ProductionBatchInput = z.infer<typeof createProductionBatchSchema>;
 export type ProductionBatchUpdate = z.infer<typeof updateProductionBatchSchema>;
 
 export const PRODUCTION_WIZARD_STEPS = [
-  { id: 1, title: 'Basic Info', description: 'Production date and feedstock link' },
-  { id: 2, title: 'Input Feedstock', description: 'Input weight and evidence' },
-  { id: 3, title: 'Output Biochar', description: 'Output weight and evidence' },
-  { id: 4, title: 'Temperature', description: 'Temperature profile data' },
-  { id: 5, title: 'Summary', description: 'Review and complete' },
+  { id: 1, title: 'Basic Info', description: 'Production date and feedstock allocation' },
+  { id: 2, title: 'Output Biochar', description: 'Output weight produced' },
+  { id: 3, title: 'Temperature', description: 'Temperature profile data' },
+  { id: 4, title: 'Summary', description: 'Review and complete' },
 ] as const;

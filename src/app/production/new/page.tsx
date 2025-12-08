@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import db from '@/lib/db';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { ProductionWizard } from '@/components/production';
