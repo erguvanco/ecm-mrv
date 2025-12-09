@@ -5,7 +5,7 @@ import db from '@/lib/db';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { Button, Card, CardContent } from '@/components/ui';
 import { EnergyTable } from '@/components/energy';
-import { Zap, Factory, Gauge, Plus, Fuel } from 'lucide-react';
+import { Zap, Factory, Gauge, Plus, Fuel, Info } from 'lucide-react';
 
 async function getEnergyUsages() {
   return db.energyUsage.findMany({
@@ -59,6 +59,14 @@ export default async function EnergyPage() {
           </Link>
         }
       />
+
+      {/* Info Box */}
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+        <Info className="h-5 w-5 mt-0.5 shrink-0" />
+        <p className="text-sm">
+          Use this module to report all energy consumed within the facility. Enter electricity and fuel usage associated with production, storage, and other operational processes.
+        </p>
+      </div>
 
       {/* Stats */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4">

@@ -36,9 +36,9 @@ const navItems: NavItem[] = [
   { id: 'production', label: 'Production', icon: Factory, path: '/production', section: 'BIOCHAR LIFECYCLE' },
   { id: 'sequestration', label: 'Sequestration', icon: ArrowDownToLine, path: '/sequestration', section: 'BIOCHAR LIFECYCLE' },
   { id: 'network', label: 'Network', icon: Network, path: '/network', section: 'BIOCHAR LIFECYCLE' },
-  // OPERATIONS
-  { id: 'transport', label: 'Transport', icon: Truck, path: '/transport', section: 'OPERATIONS' },
-  { id: 'energy', label: 'Energy', icon: Zap, path: '/energy', section: 'OPERATIONS' },
+  // INTERNAL OPERATIONS
+  { id: 'transport', label: 'Logistics (On-Site)', icon: Truck, path: '/transport', section: 'INTERNAL OPERATIONS' },
+  { id: 'energy', label: 'Energy', icon: Zap, path: '/energy', section: 'INTERNAL OPERATIONS' },
   // VERIFICATION
   { id: 'lca', label: 'LCA & Verification', icon: Calculator, path: '/lca', section: 'VERIFICATION' },
   { id: 'registry', label: 'Registry', icon: FileCheck, path: '/registry', section: 'VERIFICATION' },

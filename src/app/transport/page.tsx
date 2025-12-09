@@ -5,7 +5,7 @@ import db from '@/lib/db';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { Button, Card, CardContent } from '@/components/ui';
 import { TransportTable } from '@/components/transport';
-import { Truck, Route, Fuel, Plus } from 'lucide-react';
+import { Truck, Route, Fuel, Plus, Info } from 'lucide-react';
 
 async function getTransportEvents() {
   return db.transportEvent.findMany({
@@ -43,8 +43,8 @@ export default async function TransportPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Transport Events"
-        description="Track transport logistics for feedstock and biochar"
+        title="Internal Logistics"
+        description="On-site material movements and transport activities"
         icon={Truck}
         iconColor="text-slate-500"
         action={
@@ -56,6 +56,14 @@ export default async function TransportPage() {
           </Link>
         }
       />
+
+      {/* Info Box */}
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-800">
+        <Info className="h-5 w-5 mt-0.5 shrink-0" />
+        <p className="text-sm">
+          Use this module to document all intra-facility material movements. Record forklift, loader, and other on-site transport activities that support production and storage operations.
+        </p>
+      </div>
 
       {/* Stats */}
       <div className="grid gap-3 grid-cols-3">
