@@ -1,6 +1,6 @@
 // Server-compatible date range utility
 
-export type TimeRange = 'all' | '7d' | '30d' | '90d' | '12m' | 'ytd';
+export type TimeRange = 'all' | '7d' | '30d' | '90d' | '12m' | 'ytd' | 'mtd';
 
 // Helper function to get date range from filter value
 export function getDateRange(range: TimeRange): { start: Date | null; end: Date } {
@@ -18,6 +18,8 @@ export function getDateRange(range: TimeRange): { start: Date | null; end: Date 
       return { start: new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()), end };
     case 'ytd':
       return { start: new Date(now.getFullYear(), 0, 1), end };
+    case 'mtd':
+      return { start: new Date(now.getFullYear(), now.getMonth(), 1), end };
     case 'all':
     default:
       return { start: null, end };

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { Button, Spinner, Card, CardContent } from '@/components/ui';
 import { PlantSettingsDialog } from '@/components/network';
+import { MapTimeFilter } from '@/components/network/map-time-filter';
 import { Settings, MapPin } from 'lucide-react';
 
 // Dynamic import for NetworkMap to avoid SSR issues with mapbox-gl
@@ -67,9 +68,15 @@ export default function NetworkPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPlantSettings, setShowPlantSettings] = useState(false);
 
-  const fetchMapData = async () => {
+  // Initialize with current month/year
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+
+  const fetchMapData = useCallback(async (month: number, year: number) => {
+    setIsLoading(true);
     try {
-      const response = await fetch('/api/map');
+      const response = await fetch(`/api/map?month=${month}&year=${year}`);
       if (!response.ok) throw new Error('Failed to fetch map data');
       const data = await response.json();
       setMapData(data);
@@ -83,17 +90,22 @@ export default function NetworkPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchMapData();
-  }, []);
+    fetchMapData(selectedMonth, selectedYear);
+  }, [selectedMonth, selectedYear, fetchMapData]);
+
+  const handleTimeChange = (month: number, year: number) => {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+  };
 
   const handlePlantSettingsClose = (open: boolean) => {
     setShowPlantSettings(open);
     if (!open) {
       // Refresh data after closing settings
-      fetchMapData();
+      fetchMapData(selectedMonth, selectedYear);
     }
   };
 
@@ -126,10 +138,17 @@ export default function NetworkPage() {
         title="Supply Network"
         description="Visualize feedstock sources and sequestration destinations"
         action={
-          <Button variant="outline" onClick={() => setShowPlantSettings(true)}>
-            <Settings className="mr-2 h-4 w-4" />
-            Plant Location
-          </Button>
+          <div className="flex items-center gap-2">
+            <MapTimeFilter
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              onChange={handleTimeChange}
+            />
+            <Button variant="outline" onClick={() => setShowPlantSettings(true)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Plant Location
+            </Button>
+          </div>
         }
       />
 

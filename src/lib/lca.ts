@@ -89,7 +89,7 @@ export function calculateLCA(params: {
       ] || EMISSION_FACTORS.energy.other;
 
     // Convert to standard units if needed
-    let quantity = usage.quantity;
+    const quantity = usage.quantity;
     if (usage.unit === 'kWh') {
       totalEnergyKWh += quantity;
     } else if (usage.unit === 'litres') {

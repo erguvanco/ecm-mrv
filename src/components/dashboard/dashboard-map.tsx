@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Spinner } from '@/components/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, ArrowRight } from 'lucide-react';
+import { MapTimeFilter } from '@/components/network/map-time-filter';
 
 const NetworkMap = dynamic(
   () => import('@/components/network/network-map').then((mod) => mod.NetworkMap),
@@ -56,33 +56,38 @@ interface MapData {
 }
 
 export function DashboardMap() {
-  const searchParams = useSearchParams();
-  const range = searchParams.get('range') || 'all';
-
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchMapData = async () => {
-      setIsLoading(true);
-      try {
-        const url = range !== 'all'
-          ? `/api/map?range=${range}`
-          : '/api/map';
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch map data');
-        const data = await response.json();
-        setMapData(data);
-      } catch {
-        setError('Failed to load map data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Initialize with current month/year
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
 
-    fetchMapData();
-  }, [range]);
+  const fetchMapData = useCallback(async (month: number, year: number) => {
+    setIsLoading(true);
+    try {
+      const url = `/api/map?month=${month}&year=${year}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch map data');
+      const data = await response.json();
+      setMapData(data);
+    } catch {
+      setError('Failed to load map data');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMapData(selectedMonth, selectedYear);
+  }, [selectedMonth, selectedYear, fetchMapData]);
+
+  const handleTimeChange = (month: number, year: number) => {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+  };
 
   const hasPlantLocation = mapData?.plant.lat && mapData?.plant.lng;
   const hasData = (mapData?.feedstockSources.length || 0) + (mapData?.destinations.length || 0) > 0;
@@ -92,13 +97,20 @@ export function DashboardMap() {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-medium">Supply Network</CardTitle>
-          <Link
-            href="/network"
-            className="flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            View full map
-            <ArrowRight className="h-3 w-3" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <MapTimeFilter
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              onChange={handleTimeChange}
+            />
+            <Link
+              href="/network"
+              className="flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            >
+              View full map
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

@@ -32,22 +32,32 @@ export function QRDisplay({
   className,
 }: QRDisplayProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Derive loading state: loading when we have no URL and no error
+  const isLoading = !qrDataUrl && !error;
 
   const pixelSize = SIZE_MAP[size];
 
   useEffect(() => {
-    setIsLoading(true);
+    let cancelled = false;
+
+    // Reset state before async operation
+    setQrDataUrl(null);
     setError(null);
 
     generateQRCodeDataURL(entityType, entityId, { width: pixelSize })
-      .then(setQrDataUrl)
-      .catch((err) => {
-        console.error('Failed to generate QR code:', err);
-        setError('Failed to generate QR code');
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
       })
-      .finally(() => setIsLoading(false));
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Failed to generate QR code:', err);
+          setError('Failed to generate QR code');
+        }
+      });
+
+    return () => { cancelled = true; };
   }, [entityType, entityId, pixelSize]);
 
   const handleDownload = () => {

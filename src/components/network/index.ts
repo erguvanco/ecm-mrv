@@ -2,3 +2,4 @@
 // Import NetworkMap directly: import('@/components/network/network-map').then(mod => mod.NetworkMap)
 export { PlantSettingsDialog } from './plant-settings-dialog';
 export { AddressSearch } from './address-search';
+export { MapTimeFilter } from './map-time-filter';

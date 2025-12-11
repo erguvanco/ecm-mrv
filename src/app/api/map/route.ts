@@ -7,7 +7,23 @@ export async function GET(request: NextRequest) {
     // Get time range from query params
     const { searchParams } = new URL(request.url);
     const range = (searchParams.get('range') as TimeRange) || 'all';
-    const { start: rangeStart } = getDateRange(range);
+    const monthParam = searchParams.get('month');
+    const yearParam = searchParams.get('year');
+
+    let rangeStart: Date | null = null;
+    let rangeEnd: Date | null = null;
+
+    // If month/year params are provided, use them for filtering
+    if (monthParam !== null && yearParam !== null) {
+      const month = parseInt(monthParam, 10);
+      const year = parseInt(yearParam, 10);
+      rangeStart = new Date(year, month, 1);
+      rangeEnd = new Date(year, month + 1, 0, 23, 59, 59, 999); // Last day of month
+    } else {
+      // Fall back to range-based filtering
+      const dateRange = getDateRange(range);
+      rangeStart = dateRange.start;
+    }
 
     // Get plant settings
     let plant = await db.plantSettings.findFirst({
@@ -25,8 +41,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Build date filter
-    const feedstockDateFilter = rangeStart ? { date: { gte: rangeStart } } : {};
-    const sequestrationDateFilter = rangeStart ? { finalDeliveryDate: { gte: rangeStart } } : {};
+    const feedstockDateFilter = rangeStart
+      ? rangeEnd
+        ? { date: { gte: rangeStart, lte: rangeEnd } }
+        : { date: { gte: rangeStart } }
+      : {};
+    const sequestrationDateFilter = rangeStart
+      ? rangeEnd
+        ? { finalDeliveryDate: { gte: rangeStart, lte: rangeEnd } }
+        : { finalDeliveryDate: { gte: rangeStart } }
+      : {};
 
     // Get feedstock sources with coordinates
     const feedstockSources = await db.feedstockDelivery.findMany({
