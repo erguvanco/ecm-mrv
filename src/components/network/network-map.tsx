@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
-import { Factory, Leaf, ArrowDownToLine, Loader2 } from 'lucide-react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
+import { Factory, Leaf, ArrowDownToLine, Loader2, X, ChevronDown } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { QRDisplay } from '@/components/qr/qr-display';
+import { Button } from '@/components/ui/button';
 
 // Import mapbox components - will only render client-side due to isMounted check
 import Map, { Marker, Popup, Source, Layer, NavigationControl } from 'react-map-gl/mapbox';
@@ -45,6 +46,23 @@ interface Destination {
   routeStatus: string | null;
 }
 
+// Aggregated location types
+interface AggregatedFeedstockLocation {
+  lat: number;
+  lng: number;
+  address: string | null;
+  deliveries: FeedstockSource[];
+  totalWeight: number;
+}
+
+interface AggregatedDestinationLocation {
+  lat: number;
+  lng: number;
+  postcode: string;
+  deliveries: Destination[];
+  totalQuantity: number;
+}
+
 interface NetworkMapProps {
   plant: PlantData;
   feedstockSources: FeedstockSource[];
@@ -52,12 +70,26 @@ interface NetworkMapProps {
   onPlantClick?: () => void;
 }
 
-type PopupInfo = {
-  type: 'plant' | 'feedstock' | 'destination';
-  data: PlantData | FeedstockSource | Destination;
-  lng: number;
-  lat: number;
-} | null;
+type PopupInfo =
+  | {
+      type: 'plant';
+      data: PlantData;
+      lng: number;
+      lat: number;
+    }
+  | {
+      type: 'feedstock';
+      data: AggregatedFeedstockLocation;
+      lng: number;
+      lat: number;
+    }
+  | {
+      type: 'destination';
+      data: AggregatedDestinationLocation;
+      lng: number;
+      lat: number;
+    }
+  | null;
 
 type SelectedRoute = {
   id: string;
@@ -76,56 +108,143 @@ export function NetworkMap({
   const [popupInfo, setPopupInfo] = useState<PopupInfo>(null);
   const [selectedRoute, setSelectedRoute] = useState<SelectedRoute>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [selectedFeedstockLocation, setSelectedFeedstockLocation] = useState<AggregatedFeedstockLocation | null>(null);
+  const [selectedDestinationLocation, setSelectedDestinationLocation] = useState<AggregatedDestinationLocation | null>(null);
+  const [isPanelMinimized, setIsPanelMinimized] = useState(false);
 
   // Set mounted state for client-side only rendering
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // Aggregate feedstock sources by coordinates
+  const aggregatedFeedstockLocations: AggregatedFeedstockLocation[] = useMemo(() => {
+    const locationMap: Record<string, AggregatedFeedstockLocation> = {};
+
+    feedstockSources.forEach((source) => {
+      const key = `${source.lat},${source.lng}`;
+      const existing = locationMap[key];
+
+      if (existing) {
+        existing.deliveries.push(source);
+        existing.totalWeight += source.weightTonnes || 0;
+      } else {
+        locationMap[key] = {
+          lat: source.lat,
+          lng: source.lng,
+          address: source.sourceAddress,
+          deliveries: [source],
+          totalWeight: source.weightTonnes || 0,
+        };
+      }
+    });
+
+    return Object.values(locationMap);
+  }, [feedstockSources]);
+
+  // Aggregate destinations by coordinates
+  const aggregatedDestinationLocations: AggregatedDestinationLocation[] = useMemo(() => {
+    const locationMap: Record<string, AggregatedDestinationLocation> = {};
+
+    destinations.forEach((dest) => {
+      const key = `${dest.lat},${dest.lng}`;
+      const existing = locationMap[key];
+
+      if (existing) {
+        existing.deliveries.push(dest);
+        existing.totalQuantity += dest.quantityTonnes || 0;
+      } else {
+        locationMap[key] = {
+          lat: dest.lat,
+          lng: dest.lng,
+          postcode: dest.deliveryPostcode,
+          deliveries: [dest],
+          totalQuantity: dest.quantityTonnes || 0,
+        };
+      }
+    });
+
+    return Object.values(locationMap);
+  }, [destinations]);
+
   // All useCallback hooks must be called before any early returns (Rules of Hooks)
-  const handleMarkerClick = useCallback(
-    (e: MarkerEvent<MouseEvent>, type: 'plant' | 'feedstock' | 'destination', data: PlantData | FeedstockSource | Destination, lng: number, lat: number) => {
+  const handlePlantMarkerClick = useCallback(
+    (e: MarkerEvent<MouseEvent>, data: PlantData, lng: number, lat: number) => {
       e.originalEvent?.stopPropagation();
-      setPopupInfo({ type, data, lng, lat });
+      setPopupInfo({ type: 'plant', data, lng, lat });
       setSelectedRoute(null);
     },
     []
   );
 
-  const handleMapClick = useCallback((e: MapMouseEvent) => {
-    // Check if clicked on a route layer
-    const features = e.features;
-    if (features && features.length > 0) {
-      const feature = features[0];
-      const props = feature.properties;
-      if (props && props.id) {
-        const routeType = props.type as 'feedstock' | 'destination';
-        const routeData = routeType === 'feedstock'
-          ? feedstockSources.find(f => f.id === props.id)
-          : destinations.find(d => d.id === props.id);
+  const handleFeedstockMarkerClick = useCallback(
+    (e: MarkerEvent<MouseEvent>, data: AggregatedFeedstockLocation) => {
+      e.originalEvent?.stopPropagation();
+      setPopupInfo({ type: 'feedstock', data, lng: data.lng, lat: data.lat });
+      setSelectedRoute(null);
+      setSelectedFeedstockLocation(data);
+      setSelectedDestinationLocation(null);
+      setIsPanelMinimized(false);
+    },
+    []
+  );
 
-        if (routeData) {
-          setSelectedRoute({
-            id: props.id,
-            type: routeType,
-            data: routeData,
-            lng: e.lngLat.lng,
-            lat: e.lngLat.lat,
-          });
-          setPopupInfo(null);
-          return;
+  const handleDestinationMarkerClick = useCallback(
+    (e: MarkerEvent<MouseEvent>, data: AggregatedDestinationLocation) => {
+      e.originalEvent?.stopPropagation();
+      setPopupInfo({ type: 'destination', data, lng: data.lng, lat: data.lat });
+      setSelectedRoute(null);
+      setSelectedDestinationLocation(data);
+      setSelectedFeedstockLocation(null);
+      setIsPanelMinimized(false);
+    },
+    []
+  );
+
+  const closePanel = useCallback(() => {
+    setSelectedFeedstockLocation(null);
+    setSelectedDestinationLocation(null);
+    setPopupInfo(null);
+  }, []);
+
+  const handleMapClick = useCallback(
+    (e: MapMouseEvent) => {
+      // Check if clicked on a route layer
+      const features = e.features;
+      if (features && features.length > 0) {
+        const feature = features[0];
+        const props = feature.properties;
+        if (props && props.id) {
+          const routeType = props.type as 'feedstock' | 'destination';
+          const routeData =
+            routeType === 'feedstock'
+              ? feedstockSources.find((f) => f.id === props.id)
+              : destinations.find((d) => d.id === props.id);
+
+          if (routeData) {
+            setSelectedRoute({
+              id: props.id,
+              type: routeType,
+              data: routeData,
+              lng: e.lngLat.lng,
+              lat: e.lngLat.lat,
+            });
+            setPopupInfo(null);
+            return;
+          }
         }
       }
-    }
 
-    // Close popup and deselect route on map click if not clicking a marker or route
-    if (popupInfo) {
-      setPopupInfo(null);
-    }
-    if (selectedRoute) {
-      setSelectedRoute(null);
-    }
-  }, [popupInfo, selectedRoute, feedstockSources, destinations]);
+      // Close popup and deselect route on map click if not clicking a marker or route
+      if (popupInfo) {
+        setPopupInfo(null);
+      }
+      if (selectedRoute) {
+        setSelectedRoute(null);
+      }
+    },
+    [popupInfo, selectedRoute, feedstockSources, destinations]
+  );
 
   // Show loading state until mounted (prevents SSR issues)
   if (!isMounted) {
@@ -142,8 +261,8 @@ export function NetworkMap({
   // Calculate bounds to fit all markers
   const allPoints = [
     ...(plant.lat && plant.lng ? [[plant.lng, plant.lat]] : []),
-    ...feedstockSources.map((f) => [f.lng, f.lat]),
-    ...destinations.map((d) => [d.lng, d.lat]),
+    ...aggregatedFeedstockLocations.map((f) => [f.lng, f.lat]),
+    ...aggregatedDestinationLocations.map((d) => [d.lng, d.lat]),
   ];
 
   // Default to UK center if no points
@@ -208,9 +327,10 @@ export function NetworkMap({
   const selectedRouteGeoJSON: GeoJSON.FeatureCollection | null = selectedRoute
     ? {
         type: 'FeatureCollection',
-        features: selectedRoute.type === 'feedstock'
-          ? feedstockLines.filter(f => f.properties.id === selectedRoute.id)
-          : destinationLines.filter(d => d.properties.id === selectedRoute.id),
+        features:
+          selectedRoute.type === 'feedstock'
+            ? feedstockLines.filter((f) => f.properties.id === selectedRoute.id)
+            : destinationLines.filter((d) => d.properties.id === selectedRoute.id),
       }
     : null;
 
@@ -222,7 +342,12 @@ export function NetworkMap({
         style={{ width: '100%', height: '100%' }}
         mapStyle="mapbox://styles/mapbox/light-v11"
         onClick={handleMapClick}
-        interactiveLayerIds={['feedstock-lines-route', 'feedstock-lines-fallback', 'destination-lines-route', 'destination-lines-fallback']}
+        interactiveLayerIds={[
+          'feedstock-lines-route',
+          'feedstock-lines-fallback',
+          'destination-lines-route',
+          'destination-lines-fallback',
+        ]}
         cursor={selectedRoute ? 'pointer' : 'grab'}
       >
         <NavigationControl position="bottom-right" />
@@ -309,7 +434,7 @@ export function NetworkMap({
             latitude={plant.lat}
             anchor="center"
             onClick={(e) => {
-              handleMarkerClick(e, 'plant', plant, plant.lng!, plant.lat!);
+              handlePlantMarkerClick(e, plant, plant.lng!, plant.lat!);
               onPlantClick?.();
             }}
           >
@@ -319,38 +444,52 @@ export function NetworkMap({
           </Marker>
         )}
 
-        {/* Feedstock Markers */}
-        {feedstockSources.map((source) => (
+        {/* Aggregated Feedstock Markers */}
+        {aggregatedFeedstockLocations.map((location) => (
           <Marker
-            key={source.id}
-            longitude={source.lng}
-            latitude={source.lat}
+            key={`feedstock-${location.lat},${location.lng}`}
+            longitude={location.lng}
+            latitude={location.lat}
             anchor="center"
-            onClick={(e) => handleMarkerClick(e, 'feedstock', source, source.lng, source.lat)}
+            onClick={(e) => handleFeedstockMarkerClick(e, location)}
           >
-            <div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-2 border-[#0a0a0a] bg-white shadow transition-transform hover:scale-110">
-              <Leaf className="h-3.5 w-3.5 text-[#0a0a0a]" />
+            <div className="relative cursor-pointer transition-transform hover:scale-110">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#0a0a0a] bg-white shadow">
+                <Leaf className="h-3.5 w-3.5 text-[#0a0a0a]" />
+              </div>
+              {location.deliveries.length > 1 && (
+                <div className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#16a34a] text-[10px] font-medium text-white shadow">
+                  {location.deliveries.length}
+                </div>
+              )}
             </div>
           </Marker>
         ))}
 
-        {/* Destination Markers */}
-        {destinations.map((dest) => (
+        {/* Aggregated Destination Markers */}
+        {aggregatedDestinationLocations.map((location) => (
           <Marker
-            key={dest.id}
-            longitude={dest.lng}
-            latitude={dest.lat}
+            key={`dest-${location.lat},${location.lng}`}
+            longitude={location.lng}
+            latitude={location.lat}
             anchor="center"
-            onClick={(e) => handleMarkerClick(e, 'destination', dest, dest.lng, dest.lat)}
+            onClick={(e) => handleDestinationMarkerClick(e, location)}
           >
-            <div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded border-2 border-[#0a0a0a] bg-white shadow transition-transform hover:scale-110">
-              <ArrowDownToLine className="h-3.5 w-3.5 text-[#0a0a0a]" />
+            <div className="relative cursor-pointer transition-transform hover:scale-110">
+              <div className="flex h-7 w-7 items-center justify-center rounded border-2 border-[#0a0a0a] bg-white shadow">
+                <ArrowDownToLine className="h-3.5 w-3.5 text-[#0a0a0a]" />
+              </div>
+              {location.deliveries.length > 1 && (
+                <div className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb] text-[10px] font-medium text-white shadow">
+                  {location.deliveries.length}
+                </div>
+              )}
             </div>
           </Marker>
         ))}
 
-        {/* Popup */}
-        {popupInfo && (
+        {/* Plant Popup only */}
+        {popupInfo && popupInfo.type === 'plant' && (
           <Popup
             longitude={popupInfo.lng}
             latitude={popupInfo.lat}
@@ -361,61 +500,11 @@ export function NetworkMap({
             className="network-popup"
           >
             <div className="min-w-[140px]">
-              {popupInfo.type === 'plant' && (
-                <div>
-                  <p className="font-medium text-sm">{(popupInfo.data as PlantData).plantName}</p>
-                  {(popupInfo.data as PlantData).address && (
-                    <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 leading-tight">
-                      {(popupInfo.data as PlantData).address}
-                    </p>
-                  )}
-                </div>
-              )}
-              {popupInfo.type === 'feedstock' && (
-                <div className="flex gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm capitalize leading-tight">
-                      {(popupInfo.data as FeedstockSource).feedstockType.replace('_', ' ')}
-                    </p>
-                    <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
-                      {formatDateTime((popupInfo.data as FeedstockSource).date)}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1 text-[11px]">
-                      {(popupInfo.data as FeedstockSource).weightTonnes && (
-                        <span className="font-medium">{(popupInfo.data as FeedstockSource).weightTonnes?.toFixed(1)}t</span>
-                      )}
-                      <span className="text-[var(--muted-foreground)]">{(popupInfo.data as FeedstockSource).deliveryDistanceKm.toFixed(2)}km</span>
-                    </div>
-                  </div>
-                  <QRDisplay
-                    entityType="feedstock"
-                    entityId={(popupInfo.data as FeedstockSource).id}
-                    size="xs"
-                    showActions={false}
-                  />
-                </div>
-              )}
-              {popupInfo.type === 'destination' && (
-                <div className="flex gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm capitalize leading-tight">
-                      {(popupInfo.data as Destination).sequestrationType.replace('_', ' ')}
-                    </p>
-                    <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
-                      {formatDateTime((popupInfo.data as Destination).finalDeliveryDate)}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1 text-[11px]">
-                      <span className="font-medium">{(popupInfo.data as Destination).quantityTonnes.toFixed(1)}t</span>
-                      <span className="text-[var(--muted-foreground)]">{(popupInfo.data as Destination).deliveryPostcode}</span>
-                    </div>
-                  </div>
-                  <QRDisplay
-                    entityType="sequestration"
-                    entityId={(popupInfo.data as Destination).id}
-                    size="xs"
-                    showActions={false}
-                  />
-                </div>
+              <p className="font-medium text-sm">{popupInfo.data.plantName}</p>
+              {popupInfo.data.address && (
+                <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 leading-tight">
+                  {popupInfo.data.address}
+                </p>
               )}
             </div>
           </Popup>
@@ -459,13 +548,19 @@ export function NetworkMap({
                     <div>
                       <p className="text-[var(--muted-foreground)]">Distance</p>
                       <p className="font-medium">
-                        {((selectedRoute.data as FeedstockSource).routeDistanceKm || (selectedRoute.data as FeedstockSource).deliveryDistanceKm).toFixed(2)} km
+                        {(
+                          (selectedRoute.data as FeedstockSource).routeDistanceKm ||
+                          (selectedRoute.data as FeedstockSource).deliveryDistanceKm
+                        ).toFixed(2)}{' '}
+                        km
                       </p>
                     </div>
                     {(selectedRoute.data as FeedstockSource).weightTonnes && (
                       <div>
                         <p className="text-[var(--muted-foreground)]">Weight</p>
-                        <p className="font-medium">{(selectedRoute.data as FeedstockSource).weightTonnes?.toFixed(2)} t</p>
+                        <p className="font-medium">
+                          {(selectedRoute.data as FeedstockSource).weightTonnes?.toFixed(2)} t
+                        </p>
                       </div>
                     )}
                   </div>
@@ -513,7 +608,9 @@ export function NetworkMap({
                     {(selectedRoute.data as Destination).routeDistanceKm && (
                       <div>
                         <p className="text-[var(--muted-foreground)]">Distance</p>
-                        <p className="font-medium">{(selectedRoute.data as Destination).routeDistanceKm?.toFixed(2)} km</p>
+                        <p className="font-medium">
+                          {(selectedRoute.data as Destination).routeDistanceKm?.toFixed(2)} km
+                        </p>
                       </div>
                     )}
                     <div>
@@ -568,11 +665,165 @@ export function NetworkMap({
             <span>Delivery Route (outgoing)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-[2px] opacity-50" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #6b7280 0, #6b7280 3px, transparent 3px, transparent 6px)' }} />
+            <div
+              className="w-6 h-[2px] opacity-50"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(90deg, #6b7280 0, #6b7280 3px, transparent 3px, transparent 6px)',
+              }}
+            />
             <span>Pending route</span>
           </div>
         </div>
       </div>
+
+      {/* Slide-up Panel for Feedstock Deliveries */}
+      {selectedFeedstockLocation && (
+        <div
+          className={`absolute bottom-0 left-0 right-0 bg-white border-t shadow-lg transition-all duration-300 ease-in-out ${
+            isPanelMinimized ? 'h-12' : 'h-[280px]'
+          }`}
+        >
+          {/* Panel Header */}
+          <div className="flex items-center justify-between px-4 py-2 border-b bg-[var(--muted)]/50">
+            <div className="flex items-center gap-3">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#16a34a] bg-white">
+                <Leaf className="h-3 w-3 text-[#16a34a]" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">{selectedFeedstockLocation.address || 'Unknown Location'}</p>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  {selectedFeedstockLocation.deliveries.length} deliveries &middot; {selectedFeedstockLocation.totalWeight.toFixed(1)}t total
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setIsPanelMinimized(!isPanelMinimized)}
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform ${isPanelMinimized ? 'rotate-180' : ''}`} />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={closePanel}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Panel Content - Table */}
+          {!isPanelMinimized && (
+            <div className="overflow-auto h-[calc(100%-48px)]">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--muted)]/30 sticky top-0">
+                  <tr className="text-left text-xs text-[var(--muted-foreground)]">
+                    <th className="px-4 py-2 font-medium">Date</th>
+                    <th className="px-4 py-2 font-medium">Type</th>
+                    <th className="px-4 py-2 font-medium text-right">Weight</th>
+                    <th className="px-4 py-2 font-medium text-right">Distance</th>
+                    <th className="px-4 py-2 font-medium text-center">QR</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {selectedFeedstockLocation.deliveries
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((delivery) => (
+                      <tr key={delivery.id} className="hover:bg-[var(--muted)]/20">
+                        <td className="px-4 py-2 text-xs">{formatDateTime(delivery.date)}</td>
+                        <td className="px-4 py-2 text-xs capitalize">{delivery.feedstockType.replace('_', ' ')}</td>
+                        <td className="px-4 py-2 text-xs text-right font-medium">
+                          {delivery.weightTonnes?.toFixed(2) || '-'} t
+                        </td>
+                        <td className="px-4 py-2 text-xs text-right text-[var(--muted-foreground)]">
+                          {delivery.deliveryDistanceKm.toFixed(1)} km
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="flex justify-center">
+                            <QRDisplay entityType="feedstock" entityId={delivery.id} size="xs" showActions={false} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Slide-up Panel for Destination Deliveries */}
+      {selectedDestinationLocation && (
+        <div
+          className={`absolute bottom-0 left-0 right-0 bg-white border-t shadow-lg transition-all duration-300 ease-in-out ${
+            isPanelMinimized ? 'h-12' : 'h-[280px]'
+          }`}
+        >
+          {/* Panel Header */}
+          <div className="flex items-center justify-between px-4 py-2 border-b bg-[var(--muted)]/50">
+            <div className="flex items-center gap-3">
+              <div className="flex h-6 w-6 items-center justify-center rounded border-2 border-[#2563eb] bg-white">
+                <ArrowDownToLine className="h-3 w-3 text-[#2563eb]" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">{selectedDestinationLocation.postcode}</p>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  {selectedDestinationLocation.deliveries.length} deliveries &middot; {selectedDestinationLocation.totalQuantity.toFixed(1)}t total
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setIsPanelMinimized(!isPanelMinimized)}
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform ${isPanelMinimized ? 'rotate-180' : ''}`} />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={closePanel}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Panel Content - Table */}
+          {!isPanelMinimized && (
+            <div className="overflow-auto h-[calc(100%-48px)]">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--muted)]/30 sticky top-0">
+                  <tr className="text-left text-xs text-[var(--muted-foreground)]">
+                    <th className="px-4 py-2 font-medium">Date</th>
+                    <th className="px-4 py-2 font-medium">Type</th>
+                    <th className="px-4 py-2 font-medium text-right">Quantity</th>
+                    <th className="px-4 py-2 font-medium text-right">Distance</th>
+                    <th className="px-4 py-2 font-medium text-center">QR</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {selectedDestinationLocation.deliveries
+                    .sort((a, b) => new Date(b.finalDeliveryDate).getTime() - new Date(a.finalDeliveryDate).getTime())
+                    .map((delivery) => (
+                      <tr key={delivery.id} className="hover:bg-[var(--muted)]/20">
+                        <td className="px-4 py-2 text-xs">{formatDateTime(delivery.finalDeliveryDate)}</td>
+                        <td className="px-4 py-2 text-xs capitalize">{delivery.sequestrationType.replace('_', ' ')}</td>
+                        <td className="px-4 py-2 text-xs text-right font-medium">{delivery.quantityTonnes.toFixed(2)} t</td>
+                        <td className="px-4 py-2 text-xs text-right text-[var(--muted-foreground)]">
+                          {delivery.routeDistanceKm?.toFixed(1) || '-'} km
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="flex justify-center">
+                            <QRDisplay entityType="sequestration" entityId={delivery.id} size="xs" showActions={false} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
