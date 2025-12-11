@@ -1,32 +1,24 @@
 import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { ArrowLeft, QrCode, Flashlight, FlashlightOff, History } from 'lucide-react-native';
-
-interface ScanHistory {
-  data: string;
-  type: string;
-  timestamp: Date;
-}
+import { useScanStore } from '@/stores/scan';
 
 export default function ScanScreen() {
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [torch, setTorch] = useState(false);
-  const [scanHistory, setScanHistory] = useState<ScanHistory[]>([]);
+  const { scanHistory, addScan } = useScanStore();
 
   const handleBarCodeScanned = ({ type, data }: BarcodeScanningResult) => {
     if (scanned) return;
     setScanned(true);
 
-    // Add to history
-    setScanHistory((prev) => [
-      { data, type, timestamp: new Date() },
-      ...prev.slice(0, 9),
-    ]);
+    // Add to persistent history
+    addScan(data, type);
 
     // Parse the scanned data to determine the entity type
     // Expected format: TYPE:ID or just serial numbers
@@ -44,7 +36,7 @@ export default function ScanScreen() {
           {
             text: 'View Details',
             onPress: () => {
-              router.push(`/${route}/${id}` as any);
+              router.push(`/${route}/${id}`);
             }
           },
         ]

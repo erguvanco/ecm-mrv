@@ -3,9 +3,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import { useRouter, Stack } from 'expo-router';
-import { ArrowLeft, FileCheck, CheckCircle, Clock, Send } from 'lucide-react-native';
+import { ArrowLeft, FileCheck, CheckCircle, Clock, Send, ExternalLink } from 'lucide-react-native';
 import { api } from '@/services/api';
-import { Badge, EmptyState } from '@/components/ui';
+import { EmptyState } from '@/components/ui';
 
 interface BCU {
   id: string;
@@ -58,10 +58,26 @@ export default function RegistryScreen() {
         <FlatList
           data={bcus}
           keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <Pressable
+              className="mx-4 mb-3 p-4 rounded-xl bg-white border border-slate-200 flex-row items-center justify-between active:bg-slate-50"
+              onPress={() => router.push({ pathname: '/web', params: { path: '/registry' } })}
+            >
+              <View className="flex-1 pr-3">
+                <Text className="text-sm font-semibold text-slate-900">Open full registry</Text>
+                <Text className="text-xs text-slate-500">
+                  Issue, transfer, and retire BCUs in the web app
+                </Text>
+              </View>
+              <ExternalLink color="#22c55e" size={18} />
+            </Pressable>
+          }
           renderItem={({ item }) => (
             <Pressable
               className="bg-white mx-4 mb-3 p-4 rounded-xl border border-slate-200 active:bg-slate-50"
-              onPress={() => router.push(`/registry/${item.id}` as any)}
+              onPress={() =>
+                router.push({ pathname: '/registry/[id]', params: { id: item.id } })
+              }
             >
               <View className="flex-row items-center gap-3">
                 <View className="h-10 w-10 rounded-lg bg-green-100 items-center justify-center">

@@ -2,7 +2,7 @@ import { View, Text, ScrollView, ActivityIndicator, Pressable } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowDownToLine, Calendar, MapPin, Edit, Scale } from 'lucide-react-native';
+import { ArrowLeft, ArrowDownToLine, Calendar, MapPin, Edit } from 'lucide-react-native';
 import { api } from '@/services/api';
 import { Card, CardContent, Badge } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
@@ -59,7 +59,15 @@ export default function SequestrationDetailScreen() {
             </Pressable>
           ),
           headerRight: () => (
-            <Pressable onPress={() => router.push(`/sequestration/${id}/edit` as any)} className="ml-4">
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/sequestration/[id]/edit',
+                  params: { id: id as string },
+                })
+              }
+              className="ml-4"
+            >
               <Edit color="#1e293b" size={20} />
             </Pressable>
           ),

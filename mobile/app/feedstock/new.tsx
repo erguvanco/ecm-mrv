@@ -37,9 +37,10 @@ export default function NewFeedstockScreen() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedstocks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       router.back();
     },
-    onError: (error) => {
+    onError: () => {
       Alert.alert('Error', 'Failed to create feedstock delivery');
     },
   });

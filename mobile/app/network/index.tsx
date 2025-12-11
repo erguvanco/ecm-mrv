@@ -1,30 +1,42 @@
-import { View, Text } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
-import { Network, MapPin } from 'lucide-react-native';
+import WebView from 'react-native-webview';
+import { Network } from 'lucide-react-native';
 
 export default function NetworkScreen() {
+  const webBase =
+    process.env.EXPO_PUBLIC_WEB_APP_URL ||
+    process.env.EXPO_PUBLIC_API_URL ||
+    'http://localhost:3000';
+  const networkUrl = `${webBase}/network`;
+
   return (
     <>
       <Stack.Screen options={{ headerShown: true, title: 'Network Map' }} />
-      <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center p-6" edges={['bottom']}>
-        <View className="h-20 w-20 rounded-2xl bg-cyan-100 items-center justify-center mb-4">
-          <Network color="#06b6d4" size={40} />
-        </View>
-        <Text className="text-xl font-bold text-slate-900 text-center mb-2">
-          Supply Chain Map
-        </Text>
-        <Text className="text-sm text-slate-500 text-center mb-6">
-          Visualize your biochar supply chain with interactive maps showing feedstock sources, production facilities, and sequestration sites.
-        </Text>
-        <View className="bg-slate-100 rounded-xl p-4 w-full">
-          <View className="flex-row items-center gap-3">
-            <MapPin color="#64748b" size={20} />
-            <Text className="text-sm text-slate-600 flex-1">
-              Map integration coming soon with react-native-maps
+      <SafeAreaView className="flex-1 bg-white" edges={['bottom']}>
+        <View className="flex-row items-center gap-3 p-4 border-b border-slate-100">
+          <View className="h-12 w-12 rounded-xl bg-cyan-100 items-center justify-center">
+            <Network color="#06b6d4" size={24} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-lg font-bold text-slate-900">Supply Chain Map</Text>
+            <Text className="text-xs text-slate-500">
+              Full web map with routing and locations
             </Text>
           </View>
         </View>
+        <WebView
+          source={{ uri: networkUrl }}
+          startInLoadingState
+          renderLoading={() => (
+            <View style={StyleSheet.absoluteFill} className="items-center justify-center bg-white">
+              <ActivityIndicator size="large" color="#06b6d4" />
+              <Text className="mt-3 text-slate-600 text-sm">Loading network map…</Text>
+            </View>
+          )}
+          setSupportMultipleWindows={false}
+        />
       </SafeAreaView>
     </>
   );

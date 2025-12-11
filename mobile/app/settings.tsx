@@ -1,14 +1,13 @@
 import { View, Text, ScrollView, Pressable, Switch, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
-import { useState } from 'react';
-import { ArrowLeft, Server, Bell, Moon, Info, ChevronRight, ExternalLink } from 'lucide-react-native';
+import { ArrowLeft, Server, Bell, Moon, Info, ExternalLink } from 'lucide-react-native';
 import { Card, CardContent } from '@/components/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const { notifications, darkMode, setNotifications, setDarkMode } = useSettingsStore();
 
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 

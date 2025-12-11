@@ -25,7 +25,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div
         className={cn(
           'flex flex-col min-h-screen transition-all duration-200',
-          'lg:ml-[260px]',
+          'lg:ml-[200px]',
           collapsed && 'lg:ml-16'
         )}
       >

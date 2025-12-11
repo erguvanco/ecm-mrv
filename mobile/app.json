@@ -30,7 +30,13 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow ECM MRV to access your camera to scan QR codes"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -19,7 +19,17 @@ interface FeedstockDetail {
   evidence?: { id: string; fileName: string }[];
 }
 
-function DetailRow({ label, value, icon: Icon }: { label: string; value: string | number | null; icon?: any }) {
+type IconType = React.ComponentType<{ color: string; size: number }>;
+
+function DetailRow({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string | number | null;
+  icon?: IconType;
+}) {
   if (!value) return null;
   return (
     <View className="flex-row items-center justify-between py-3 border-b border-slate-100">
@@ -73,7 +83,15 @@ export default function FeedstockDetailScreen() {
             </Pressable>
           ),
           headerRight: () => (
-            <Pressable onPress={() => router.push(`/feedstock/${id}/edit` as any)} className="ml-4">
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/feedstock/[id]/edit',
+                  params: { id: id as string },
+                })
+              }
+              className="ml-4"
+            >
               <Edit color="#1e293b" size={20} />
             </Pressable>
           ),

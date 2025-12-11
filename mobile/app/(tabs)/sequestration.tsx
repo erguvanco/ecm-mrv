@@ -1,9 +1,9 @@
-import { View, Text, FlatList, RefreshControl, Pressable } from 'react-native';
+import { View, Text, FlatList, RefreshControl, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import { Plus, ArrowDownToLine, Calendar, MapPin, Scale } from 'lucide-react-native';
+import { Plus, ArrowDownToLine, Calendar, MapPin } from 'lucide-react-native';
 import { api } from '@/services/api';
 
 interface SequestrationEvent {
@@ -76,7 +76,7 @@ export default function SequestrationScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: events = [], refetch } = useQuery<SequestrationEvent[]>({
+  const { data: events = [], refetch, isLoading } = useQuery<SequestrationEvent[]>({
     queryKey: ['sequestration-events'],
     queryFn: () => api.sequestration.list(),
   });
@@ -113,13 +113,20 @@ export default function SequestrationScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListEmptyComponent={
-          <View className="items-center py-12">
-            <View className="h-16 w-16 rounded-full bg-slate-100 items-center justify-center mb-4">
-              <ArrowDownToLine color="#94a3b8" size={32} />
+          isLoading ? (
+            <View className="items-center py-12">
+              <ActivityIndicator size="large" color="#8b5cf6" />
+              <Text className="text-sm text-slate-500 mt-3">Loading events...</Text>
             </View>
-            <Text className="text-base font-medium text-slate-700">No sequestration events</Text>
-            <Text className="text-sm text-slate-500 mt-1">Record biochar applications to track carbon</Text>
-          </View>
+          ) : (
+            <View className="items-center py-12">
+              <View className="h-16 w-16 rounded-full bg-slate-100 items-center justify-center mb-4">
+                <ArrowDownToLine color="#94a3b8" size={32} />
+              </View>
+              <Text className="text-base font-medium text-slate-700">No sequestration events</Text>
+              <Text className="text-sm text-slate-500 mt-1">Record biochar applications to track carbon</Text>
+            </View>
+          )
         }
       />
     </SafeAreaView>

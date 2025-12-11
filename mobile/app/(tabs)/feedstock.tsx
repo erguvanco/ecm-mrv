@@ -1,9 +1,9 @@
-import { View, Text, FlatList, RefreshControl, Pressable } from 'react-native';
+import { View, Text, FlatList, RefreshControl, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import { Plus, Leaf, Calendar, Scale, FileText } from 'lucide-react-native';
+import { Plus, Leaf, Calendar, FileText } from 'lucide-react-native';
 import { api } from '@/services/api';
 
 interface FeedstockDelivery {
@@ -105,13 +105,20 @@ export default function FeedstockScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListEmptyComponent={
-          <View className="items-center py-12">
-            <View className="h-16 w-16 rounded-full bg-slate-100 items-center justify-center mb-4">
-              <Leaf color="#94a3b8" size={32} />
+          isLoading ? (
+            <View className="items-center py-12">
+              <ActivityIndicator size="large" color="#22c55e" />
+              <Text className="text-sm text-slate-500 mt-3">Loading feedstocks...</Text>
             </View>
-            <Text className="text-base font-medium text-slate-700">No feedstock deliveries</Text>
-            <Text className="text-sm text-slate-500 mt-1">Add your first delivery to get started</Text>
-          </View>
+          ) : (
+            <View className="items-center py-12">
+              <View className="h-16 w-16 rounded-full bg-slate-100 items-center justify-center mb-4">
+                <Leaf color="#94a3b8" size={32} />
+              </View>
+              <Text className="text-base font-medium text-slate-700">No feedstock deliveries</Text>
+              <Text className="text-sm text-slate-500 mt-1">Add your first delivery to get started</Text>
+            </View>
+          )
         }
       />
     </SafeAreaView>

@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import { useRouter, Stack } from 'expo-router';
-import { ArrowLeft, Plus, Zap, Calendar } from 'lucide-react-native';
+import { ArrowLeft, Plus, Zap } from 'lucide-react-native';
 import { api } from '@/services/api';
 import { Badge, EmptyState } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
@@ -44,7 +44,7 @@ export default function EnergyScreen() {
             </Pressable>
           ),
           headerRight: () => (
-            <Pressable onPress={() => router.push('/energy/new' as any)} className="ml-4">
+            <Pressable onPress={() => router.push('/energy/new')} className="ml-4">
               <Plus color="#1e293b" size={24} />
             </Pressable>
           ),
@@ -57,7 +57,9 @@ export default function EnergyScreen() {
           renderItem={({ item }) => (
             <Pressable
               className="bg-white mx-4 mb-3 p-4 rounded-xl border border-slate-200 active:bg-slate-50"
-              onPress={() => router.push(`/energy/${item.id}` as any)}
+              onPress={() =>
+                router.push({ pathname: '/energy/[id]', params: { id: item.id } })
+              }
             >
               <View className="flex-row items-center gap-3">
                 <View className="h-10 w-10 rounded-lg bg-amber-100 items-center justify-center">
@@ -88,7 +90,7 @@ export default function EnergyScreen() {
               icon={<Zap color="#94a3b8" size={32} />}
               title="No energy records"
               description="Track energy consumption"
-              action={{ label: 'Add Record', onPress: () => router.push('/energy/new' as any) }}
+              action={{ label: 'Add Record', onPress: () => router.push('/energy/new') }}
             />
           }
         />

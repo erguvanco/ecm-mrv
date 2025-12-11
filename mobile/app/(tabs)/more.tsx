@@ -13,13 +13,21 @@ import {
   Settings,
 } from 'lucide-react-native';
 
+type ValidHref = 
+  | '/transport'
+  | '/energy'
+  | '/network'
+  | '/lca'
+  | '/registry'
+  | '/datasets';
+
 interface MenuItem {
   id: string;
   label: string;
   description: string;
   icon: React.ComponentType<{ color: string; size: number }>;
   color: string;
-  href: string;
+  href: ValidHref;
 }
 
 const menuItems: MenuItem[] = [
@@ -80,7 +88,7 @@ function MenuCard({ item }: { item: MenuItem }) {
   return (
     <Pressable
       className="flex-row items-center bg-white rounded-xl p-4 border border-slate-200 mb-3 active:bg-slate-50"
-      onPress={() => router.push(item.href as any)}
+      onPress={() => router.push(item.href)}
     >
       <View
         className="h-10 w-10 rounded-lg items-center justify-center mr-3"
@@ -99,6 +107,10 @@ function MenuCard({ item }: { item: MenuItem }) {
 
 export default function MoreScreen() {
   const router = useRouter();
+  const webBase =
+    process.env.EXPO_PUBLIC_WEB_APP_URL ||
+    process.env.EXPO_PUBLIC_API_URL ||
+    'http://localhost:3000';
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={['top']}>
@@ -108,6 +120,21 @@ export default function MoreScreen() {
           <Text className="text-2xl font-bold text-slate-900">More</Text>
           <Text className="text-sm text-slate-500">Additional modules and settings</Text>
         </View>
+
+        {/* Full Web Experience */}
+        <Pressable
+          className="flex-row items-center bg-white rounded-xl p-4 border border-slate-200 mb-6 active:bg-slate-50"
+          onPress={() => router.push({ pathname: '/web', params: { path: '/' } })}
+        >
+          <View className="h-10 w-10 rounded-lg bg-blue-100 items-center justify-center mr-3">
+            <Text className="text-sm font-semibold text-blue-700">Web</Text>
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-semibold text-slate-900">Open full web app</Text>
+            <Text className="text-xs text-slate-500">{webBase}</Text>
+          </View>
+          <ChevronRight color="#94a3b8" size={20} />
+        </Pressable>
 
         {/* QR Scanner Quick Action */}
         <Pressable

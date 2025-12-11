@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import { Factory, Leaf, ArrowDownToLine, TrendingUp, QrCode } from 'lucide-react-native';
-import { BarChart, PieChart } from 'react-native-gifted-charts';
+import { BarChart } from 'react-native-gifted-charts';
 import { api } from '@/services/api';
 
 interface DashboardStats {
@@ -74,20 +74,6 @@ export default function DashboardScreen() {
     { value: stats?.feedstockCount ?? 0, label: 'Feed', frontColor: '#22c55e' },
     { value: stats?.productionCount ?? 0, label: 'Prod', frontColor: '#3b82f6' },
     { value: stats?.sequestrationCount ?? 0, label: 'Seq', frontColor: '#8b5cf6' },
-  ];
-
-  const pieData = [
-    {
-      value: stats?.totalBiocharTonnes ?? 0,
-      color: '#f59e0b',
-      text: 'Biochar',
-      focused: true,
-    },
-    {
-      value: stats?.totalCO2eTonnes ?? 0,
-      color: '#10b981',
-      text: 'CO2e',
-    },
   ];
 
   return (

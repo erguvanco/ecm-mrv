@@ -1,13 +1,32 @@
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
+  timeout?: number;
+}
+
+export class NetworkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
+export class ApiError extends Error {
+  status: number;
+  
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, headers = {} } = options;
+  const { method = 'GET', body, headers = {}, timeout = REQUEST_TIMEOUT } = options;
 
   const config: RequestInit = {
     method,
@@ -21,14 +40,41 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, config);
+  // Create abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  config.signal = controller.signal;
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, config);
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new ApiError(error.message || `HTTP ${response.status}`, response.status);
+    }
+
+    return response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (error instanceof Error) {
+      // Handle specific error types
+      if (error.name === 'AbortError') {
+        throw new NetworkError('Request timed out. Please check your connection and try again.');
+      }
+      
+      if (error.message === 'Network request failed' || error.message.includes('network')) {
+        throw new NetworkError('Unable to connect to the server. Please check your internet connection.');
+      }
+    }
+    
+    throw new NetworkError('An unexpected network error occurred. Please try again.');
   }
-
-  return response.json();
 }
 
 export const api = {

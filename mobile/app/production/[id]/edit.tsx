@@ -45,6 +45,7 @@ export default function EditProductionScreen() {
 
   useEffect(() => {
     if (production) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         productionDate: production.productionDate.split('T')[0],
         status: production.status,
@@ -67,6 +68,7 @@ export default function EditProductionScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production-batches'] });
       queryClient.invalidateQueries({ queryKey: ['production', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       router.back();
     },
     onError: () => {
@@ -78,7 +80,8 @@ export default function EditProductionScreen() {
     mutationFn: () => api.production.delete(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production-batches'] });
-      router.replace('/production' as any);
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      router.replace('/production');
     },
     onError: () => {
       Alert.alert('Error', 'Failed to delete production batch');
@@ -112,9 +115,13 @@ export default function EditProductionScreen() {
     );
   }
 
-  const yieldPercent = formData.inputFeedstockWeightTonnes && formData.outputBiocharWeightTonnes
-    ? ((parseFloat(formData.outputBiocharWeightTonnes) / parseFloat(formData.inputFeedstockWeightTonnes)) * 100).toFixed(1)
-    : '0';
+  const yieldPercent = (() => {
+    if (!formData.inputFeedstockWeightTonnes || !formData.outputBiocharWeightTonnes) return '0';
+    const input = parseFloat(formData.inputFeedstockWeightTonnes);
+    const output = parseFloat(formData.outputBiocharWeightTonnes);
+    if (isNaN(input) || isNaN(output) || input === 0) return '—';
+    return ((output / input) * 100).toFixed(1);
+  })();
 
   return (
     <>

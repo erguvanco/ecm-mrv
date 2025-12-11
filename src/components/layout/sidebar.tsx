@@ -74,11 +74,11 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex h-16 items-center border-b px-5">
+      <div className="flex h-12 items-center border-b px-3">
         {!collapsed ? (
           <Link href="/" className="flex items-baseline gap-1">
-            <span className="font-logo text-xl tracking-tight">ECM</span>
-            <span className="text-xs font-medium tracking-widest text-[var(--muted-foreground)] uppercase">MRV</span>
+            <span className="font-logo text-lg tracking-tight">ECM</span>
+            <span className="text-[10px] font-medium tracking-widest text-[var(--muted-foreground)] uppercase">MRV</span>
           </Link>
         ) : (
           <Link href="/" className="mx-auto">
@@ -89,7 +89,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
         <Button
           variant="ghost"
           size="icon"
-          className="ml-auto lg:hidden"
+          className="ml-auto lg:hidden h-8 w-8"
           onClick={() => onMobileOpenChange?.(false)}
         >
           <X className="h-4 w-4" />
@@ -97,8 +97,8 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-0.5 px-3">
+      <nav className="flex-1 overflow-y-auto py-2">
+        <ul className="space-y-px px-2">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -108,14 +108,14 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
             return (
               <React.Fragment key={item.id}>
                 {showSectionHeader && !collapsed && (
-                  <li className={cn('pt-4 pb-1 px-3', index > 1 && 'mt-2')}>
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <li className={cn('pt-3 pb-1 px-2', index > 1 && 'mt-1')}>
+                    <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
                       {item.section}
                     </span>
                   </li>
                 )}
                 {showSectionHeader && collapsed && (
-                  <li className="pt-4 pb-1">
+                  <li className="pt-3 pb-1">
                     <div className="mx-auto h-px w-6 bg-border" />
                   </li>
                 )}
@@ -123,7 +123,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
                   <Link
                     href={item.path}
                     className={cn(
-                      'flex items-center gap-3 rounded-[var(--radius)] px-3 py-2 text-sm transition-colors',
+                      'flex items-center gap-2.5 rounded-[var(--radius)] px-2.5 py-1.5 text-[13px] transition-colors',
                       active
                         ? 'bg-[var(--foreground)] text-[var(--background)] font-medium'
                         : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]'
@@ -141,11 +141,11 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
       </nav>
 
       {/* Collapse Toggle - hidden on mobile */}
-      <div className="border-t p-3 hidden lg:block">
+      <div className="border-t p-2 hidden lg:block">
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+          className="w-full justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] h-7"
           onClick={() => onCollapsedChange?.(!collapsed)}
         >
           {collapsed ? (
@@ -171,7 +171,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-screen w-[260px] border-r bg-[var(--background)] transition-transform duration-200 lg:hidden',
+          'fixed left-0 top-0 z-50 h-screen w-[200px] border-r bg-[var(--background)] transition-transform duration-200 lg:hidden',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -182,7 +182,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, mobileOpen = fal
       <aside
         className={cn(
           'fixed left-0 top-0 z-40 h-screen border-r bg-[var(--background)] transition-all duration-200 hidden lg:block',
-          collapsed ? 'w-16' : 'w-[260px]'
+          collapsed ? 'w-16' : 'w-[200px]'
         )}
       >
         {sidebarContent}

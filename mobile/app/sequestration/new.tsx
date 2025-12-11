@@ -35,6 +35,7 @@ export default function NewSequestrationScreen() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sequestration-events'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       router.back();
     },
     onError: () => {

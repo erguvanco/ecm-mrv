@@ -3,9 +3,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Check, Factory } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react-native';
 import { api } from '@/services/api';
 import { Button, Input, Card, CardContent } from '@/components/ui';
+
+interface FeedstockOption {
+  id: string;
+  serialNumber: string | null;
+  feedstockType: string;
+  weightTonnes: number;
+}
 
 export default function NewProductionScreen() {
   const router = useRouter();
@@ -21,7 +28,7 @@ export default function NewProductionScreen() {
     residenceTimeMinutes: '',
   });
 
-  const { data: feedstocks = [] } = useQuery({
+  const { data: feedstocks = [] } = useQuery<FeedstockOption[]>({
     queryKey: ['feedstocks'],
     queryFn: () => api.feedstock.list(),
   });
@@ -36,6 +43,7 @@ export default function NewProductionScreen() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       router.back();
     },
     onError: () => {
@@ -78,7 +86,7 @@ export default function NewProductionScreen() {
                 <Text className="text-sm text-slate-500">No feedstock deliveries available</Text>
               ) : (
                 <View className="gap-2">
-                  {feedstocks.slice(0, 10).map((f: any) => (
+                  {feedstocks.slice(0, 10).map((f) => (
                     <Pressable
                       key={f.id}
                       onPress={() => setFormData({ ...formData, feedstockDeliveryId: f.id })}
@@ -123,7 +131,12 @@ export default function NewProductionScreen() {
               {formData.inputFeedstockWeightTonnes && formData.outputBiocharWeightTonnes && (
                 <View className="bg-blue-50 p-3 rounded-lg">
                   <Text className="text-sm text-blue-700">
-                    Yield: {((parseFloat(formData.outputBiocharWeightTonnes) / parseFloat(formData.inputFeedstockWeightTonnes)) * 100).toFixed(1)}%
+                    Yield: {(() => {
+                      const input = parseFloat(formData.inputFeedstockWeightTonnes);
+                      const output = parseFloat(formData.outputBiocharWeightTonnes);
+                      if (isNaN(input) || isNaN(output) || input === 0) return '—';
+                      return ((output / input) * 100).toFixed(1) + '%';
+                    })()}
                   </Text>
                 </View>
               )}

@@ -47,6 +47,7 @@ export default function EditSequestrationScreen() {
 
   useEffect(() => {
     if (sequestration) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         finalDeliveryDate: sequestration.finalDeliveryDate.split('T')[0],
         totalBiocharWeightTonnes: sequestration.totalBiocharWeightTonnes.toString(),
@@ -66,6 +67,7 @@ export default function EditSequestrationScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sequestration-events'] });
       queryClient.invalidateQueries({ queryKey: ['sequestration', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       router.back();
     },
     onError: () => {
@@ -77,7 +79,8 @@ export default function EditSequestrationScreen() {
     mutationFn: () => api.sequestration.delete(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sequestration-events'] });
-      router.replace('/sequestration' as any);
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      router.replace('/sequestration');
     },
     onError: () => {
       Alert.alert('Error', 'Failed to delete sequestration event');

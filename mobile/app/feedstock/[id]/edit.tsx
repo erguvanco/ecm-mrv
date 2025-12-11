@@ -48,6 +48,7 @@ export default function EditFeedstockScreen() {
 
   useEffect(() => {
     if (feedstock) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         date: feedstock.date.split('T')[0],
         feedstockType: feedstock.feedstockType,
@@ -68,6 +69,7 @@ export default function EditFeedstockScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedstocks'] });
       queryClient.invalidateQueries({ queryKey: ['feedstock', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       router.back();
     },
     onError: () => {
@@ -79,7 +81,8 @@ export default function EditFeedstockScreen() {
     mutationFn: () => api.feedstock.delete(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedstocks'] });
-      router.replace('/feedstock' as any);
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      router.replace('/feedstock');
     },
     onError: () => {
       Alert.alert('Error', 'Failed to delete feedstock delivery');
