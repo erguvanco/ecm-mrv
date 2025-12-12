@@ -8,7 +8,7 @@ import { TransportTable } from '@/components/transport';
 import { Truck, Route, Fuel, Plus, Info } from 'lucide-react';
 
 async function getTransportEvents() {
-  return db.transportEvent.findMany({
+  const events = await db.transportEvent.findMany({
     orderBy: { date: 'desc' },
     include: {
       evidence: { select: { id: true } },
@@ -20,6 +20,27 @@ async function getTransportEvents() {
       },
     },
   });
+
+  // Serialize dates for client component
+  return events.map((event) => ({
+    ...event,
+    date: event.date.toISOString(),
+    createdAt: event.createdAt.toISOString(),
+    updatedAt: event.updatedAt.toISOString(),
+    routeCalculatedAt: event.routeCalculatedAt?.toISOString() ?? null,
+    feedstockDelivery: event.feedstockDelivery
+      ? {
+          ...event.feedstockDelivery,
+          date: event.feedstockDelivery.date.toISOString(),
+        }
+      : null,
+    sequestrationEvent: event.sequestrationEvent
+      ? {
+          ...event.sequestrationEvent,
+          finalDeliveryDate: event.sequestrationEvent.finalDeliveryDate.toISOString(),
+        }
+      : null,
+  }));
 }
 
 async function getStats() {
