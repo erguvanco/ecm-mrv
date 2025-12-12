@@ -48,7 +48,7 @@ export const sequestrationStep2Schema = z.object({
   storageLocation: z.string().min(1, 'Storage location is required'),
   storageStartDate: z.coerce.date({ required_error: 'Storage start date is required' }),
   storageEndDate: z.coerce.date({ required_error: 'Storage end date is required' }),
-  storageContainerIds: z.string().optional().nullable(),
+  storageContainerIds: z.string().min(1, 'Container IDs are required'),
   storageConditions: z.string().optional().nullable(),
 }).refine((data) => {
   if (data.storageStartDate && data.storageEndDate) {

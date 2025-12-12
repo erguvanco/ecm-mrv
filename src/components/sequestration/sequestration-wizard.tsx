@@ -24,6 +24,7 @@ import {
   Checkbox,
 } from '@/components/ui';
 import { BatchLinkScanner } from '@/components/qr';
+import { AddressSearch } from '@/components/network';
 import {
   sequestrationStep1Schema,
   sequestrationStep2Schema,
@@ -54,6 +55,8 @@ export interface SequestrationWizardData {
   [key: string]: unknown;
   storageBeforeDelivery?: boolean;
   storageLocation?: string | null;
+  storageLocationLat?: number | null;
+  storageLocationLng?: number | null;
   storageStartDate?: Date | string | null;
   storageEndDate?: Date | string | null;
   storageContainerIds?: string | null;
@@ -89,6 +92,17 @@ export function SequestrationWizard({
   const [error, setError] = useState<string | null>(null);
   const [selectedBatches, setSelectedBatches] = useState<BatchLink[]>(
     initialData?.productionBatches || []
+  );
+  const [storageLocationValue, setStorageLocationValue] = useState<{
+    address: string;
+    coordinates: [number, number];
+  } | null>(
+    initialData?.storageLocation && initialData?.storageLocationLng != null && initialData?.storageLocationLat != null
+      ? {
+          address: initialData.storageLocation,
+          coordinates: [initialData.storageLocationLng, initialData.storageLocationLat],
+        }
+      : null
   );
 
   const hasStorage = initialData?.storageBeforeDelivery ?? false;
@@ -163,9 +177,9 @@ export function SequestrationWizard({
   });
 
   // Watch form values for validation
-  const storageLocation = step2Form.watch('storageLocation');
   const storageStartDate = step2Form.watch('storageStartDate');
   const storageEndDate = step2Form.watch('storageEndDate');
+  const storageContainerIds = step2Form.watch('storageContainerIds');
   const finalDeliveryDate = step4Form.watch('finalDeliveryDate');
   const deliveryPostcode = step4Form.watch('deliveryPostcode');
   const sequestrationType = step4Form.watch('sequestrationType');
@@ -179,9 +193,10 @@ export function SequestrationWizard({
 
     // Step 2 (storage details) - only validate if storage is enabled
     const step2Valid = !data.storageBeforeDelivery || (
-      !!storageLocation?.trim() &&
+      !!storageLocationValue &&
       !!storageStartDate &&
-      !!storageEndDate
+      !!storageEndDate &&
+      !!storageContainerIds?.trim()
     );
 
     // Step 3 (batch linkage) - valid if at least one batch is selected
@@ -216,9 +231,10 @@ export function SequestrationWizard({
   }, [
     isInitialized,
     data.storageBeforeDelivery,
-    storageLocation,
+    storageLocationValue,
     storageStartDate,
     storageEndDate,
+    storageContainerIds,
     selectedBatches.length,
     finalDeliveryDate,
     deliveryPostcode,
@@ -282,7 +298,9 @@ export function SequestrationWizard({
     } else if (stepId === 2) {
       const formData = step2Form.getValues();
       updateData({
-        storageLocation: formData.storageLocation || null,
+        storageLocation: storageLocationValue?.address || null,
+        storageLocationLat: storageLocationValue?.coordinates[1] || null,
+        storageLocationLng: storageLocationValue?.coordinates[0] || null,
         storageStartDate: formData.storageStartDate || null,
         storageEndDate: formData.storageEndDate || null,
         storageContainerIds: formData.storageContainerIds || null,
@@ -375,15 +393,15 @@ export function SequestrationWizard({
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="storageLocation">Storage Location *</Label>
-              <Input
-                id="storageLocation"
-                {...step2Form.register('storageLocation')}
-                placeholder="e.g., Warehouse A, Field Storage"
+              <Label>Storage Location *</Label>
+              <AddressSearch
+                value={storageLocationValue}
+                onChange={setStorageLocationValue}
+                placeholder="Search for storage location address..."
               />
-              {step2Form.formState.errors.storageLocation && (
+              {!storageLocationValue && step2Form.formState.isSubmitted && (
                 <p className="text-sm text-red-500">
-                  {step2Form.formState.errors.storageLocation.message}
+                  Storage location is required
                 </p>
               )}
             </div>
@@ -433,12 +451,18 @@ export function SequestrationWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="storageContainerIds">Container IDs</Label>
+              <Label htmlFor="storageContainerIds">Container IDs *</Label>
               <Input
                 id="storageContainerIds"
                 {...step2Form.register('storageContainerIds')}
                 placeholder="e.g., CONT-001, CONT-002"
+                className={step2Form.formState.errors.storageContainerIds ? 'border-red-500' : ''}
               />
+              {step2Form.formState.errors.storageContainerIds && (
+                <p className="text-sm text-red-500">
+                  {step2Form.formState.errors.storageContainerIds.message}
+                </p>
+              )}
             </div>
           </div>
         );
