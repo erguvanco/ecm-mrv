@@ -50,6 +50,14 @@ export const sequestrationStep2Schema = z.object({
   storageEndDate: z.coerce.date({ required_error: 'Storage end date is required' }),
   storageContainerIds: z.string().optional().nullable(),
   storageConditions: z.string().optional().nullable(),
+}).refine((data) => {
+  if (data.storageStartDate && data.storageEndDate) {
+    return data.storageEndDate >= data.storageStartDate;
+  }
+  return true;
+}, {
+  message: 'Storage end date must be on or after the start date',
+  path: ['storageEndDate'],
 });
 
 export const sequestrationStep3Schema = z.object({

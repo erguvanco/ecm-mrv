@@ -146,7 +146,7 @@ export function SequestrationWizard({
       storageStartDate: formatDateForInput(data.storageStartDate),
       storageEndDate: formatDateForInput(data.storageEndDate),
       storageContainerIds: data.storageContainerIds || '',
-      storageConditions: data.storageConditions || '',
+      storageConditions: data.storageConditions || 'indoor',
     },
   });
 
@@ -396,6 +396,11 @@ export function SequestrationWizard({
                   type="date"
                   {...step2Form.register('storageStartDate')}
                 />
+                {step2Form.formState.errors.storageStartDate && (
+                  <p className="text-sm text-red-500">
+                    {step2Form.formState.errors.storageStartDate.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="storageEndDate">Storage End Date *</Label>
@@ -404,6 +409,11 @@ export function SequestrationWizard({
                   type="date"
                   {...step2Form.register('storageEndDate')}
                 />
+                {step2Form.formState.errors.storageEndDate && (
+                  <p className="text-sm text-red-500">
+                    {step2Form.formState.errors.storageEndDate.message}
+                  </p>
+                )}
               </div>
             </div>
 
