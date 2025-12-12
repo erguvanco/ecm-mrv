@@ -166,11 +166,23 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
     }
   };
 
+  const formErrors = Object.keys(errors);
+
   return (
     <form onSubmit={handleSubmit(onSubmit as unknown as Parameters<typeof handleSubmit>[0])} className="space-y-6">
       {error && (
         <div className="bg-red-50 p-4 text-red-700 border border-red-200">
           {error}
+        </div>
+      )}
+      {formErrors.length > 0 && (
+        <div className="bg-red-50 p-4 text-red-700 border border-red-200 rounded">
+          <p className="font-medium">Please fix the following errors:</p>
+          <ul className="list-disc list-inside mt-2">
+            {formErrors.map((key) => (
+              <li key={key}>{(errors as Record<string, { message?: string }>)[key]?.message || `Invalid ${key}`}</li>
+            ))}
+          </ul>
         </div>
       )}
 
