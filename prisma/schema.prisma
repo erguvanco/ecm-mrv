@@ -142,6 +142,7 @@ model TransportEvent {
   vehicleDescription    String?
   fuelType              String?
   fuelTypeOther         String?   // Custom type when fuelType is "other"
+  fuelUnit              String?   // Unit for fuel amount (kWh, liters, m³, kg)
   fuelAmount            Float?
   cargoDescription      String?
   feedstockDeliveryId   String?

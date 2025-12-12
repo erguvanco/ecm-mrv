@@ -8,6 +8,8 @@ import {
   createTransportEventSchema,
   TransportEventInput,
   TRANSPORT_FUEL_TYPES,
+  TRANSPORT_VEHICLE_TYPES,
+  OTHER_FUEL_UNITS,
   DEFAULT_ORIGIN_ADDRESS,
   DEFAULT_ORIGIN_COORDS,
 } from '@/lib/validations/transport';
@@ -96,6 +98,7 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
           vehicleDescription: '',
           fuelType: '',
           fuelTypeOther: '',
+          fuelUnit: '',
           fuelAmount: null,
           cargoDescription: '',
           feedstockDeliveryId: '',
@@ -255,7 +258,7 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Vehicle Information</CardTitle>
+          <CardTitle className="text-lg">Vehicle Information *</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -268,50 +271,95 @@ export function TransportForm({ initialData, mode }: TransportFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vehicleDescription">Vehicle Description</Label>
-            <Input
+            <Label htmlFor="vehicleDescription">Vehicle Description *</Label>
+            <Select
               id="vehicleDescription"
               {...register('vehicleDescription')}
-              placeholder="e.g., 20t Truck"
-            />
+              className={errors.vehicleDescription ? 'border-red-500' : ''}
+            >
+              <option value="">Select vehicle type...</option>
+              {TRANSPORT_VEHICLE_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </Select>
+            {errors.vehicleDescription && (
+              <p className="text-sm text-red-500">{errors.vehicleDescription.message}</p>
+            )}
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Fuel Information</CardTitle>
+          <CardTitle className="text-lg">Fuel Information *</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="fuelType">Fuel Type</Label>
-            <Select id="fuelType" {...register('fuelType')}>
-              <option value="">Select fuel type...</option>
+            <Label htmlFor="fuelType">Energy Type *</Label>
+            <Select
+              id="fuelType"
+              {...register('fuelType')}
+              className={errors.fuelType ? 'border-red-500' : ''}
+            >
+              <option value="">Select energy type...</option>
               {TRANSPORT_FUEL_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
-                  {type.label}
+                  {type.label} ({type.unit || 'select unit'})
                 </option>
               ))}
             </Select>
+            {errors.fuelType && (
+              <p className="text-sm text-red-500">{errors.fuelType.message}</p>
+            )}
           </div>
 
           {watch('fuelType') === 'other' && (
-            <div className="space-y-2">
-              <Label htmlFor="fuelTypeOther">Please specify *</Label>
-              <Input
-                id="fuelTypeOther"
-                {...register('fuelTypeOther')}
-                placeholder="Enter fuel type..."
-                className={errors.fuelTypeOther ? 'border-red-500' : ''}
-              />
-              {errors.fuelTypeOther && (
-                <p className="text-sm text-red-500">{errors.fuelTypeOther.message}</p>
-              )}
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="fuelTypeOther">Please specify energy type *</Label>
+                <Input
+                  id="fuelTypeOther"
+                  {...register('fuelTypeOther')}
+                  placeholder="Enter energy type..."
+                  className={errors.fuelTypeOther ? 'border-red-500' : ''}
+                />
+                {errors.fuelTypeOther && (
+                  <p className="text-sm text-red-500">{errors.fuelTypeOther.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fuelUnit">Unit *</Label>
+                <Select
+                  id="fuelUnit"
+                  {...register('fuelUnit')}
+                  className={errors.fuelUnit ? 'border-red-500' : ''}
+                >
+                  <option value="">Select unit...</option>
+                  {OTHER_FUEL_UNITS.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </Select>
+                {errors.fuelUnit && (
+                  <p className="text-sm text-red-500">{errors.fuelUnit.message}</p>
+                )}
+              </div>
+            </>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="fuelAmount">Fuel Amount (liters)</Label>
+            <Label htmlFor="fuelAmount">
+              Fuel Amount{' '}
+              {watch('fuelType') && watch('fuelType') !== 'other' && (
+                <>({TRANSPORT_FUEL_TYPES.find(t => t.value === watch('fuelType'))?.unit})</>
+              )}
+              {watch('fuelType') === 'other' && watch('fuelUnit') && (
+                <>({watch('fuelUnit')})</>
+              )}
+            </Label>
             <Input
               id="fuelAmount"
               type="number"
