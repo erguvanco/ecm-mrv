@@ -1,5 +1,41 @@
 import { z } from 'zod';
 
+// PURO METHODOLOGY: End-use categories (Section 3.6)
+export const END_USE_CATEGORIES = [
+  { value: 'SOIL_AGRICULTURE', label: 'Soil - Agriculture', requiresSoilTemp: true },
+  { value: 'SOIL_FORESTRY', label: 'Soil - Forestry', requiresSoilTemp: true },
+  { value: 'SOIL_URBAN', label: 'Soil - Urban/Landscaping', requiresSoilTemp: true },
+  { value: 'SOIL_REMEDIATION', label: 'Soil - Remediation', requiresSoilTemp: true },
+  { value: 'CONSTRUCTION_CONCRETE', label: 'Construction - Concrete', requiresSoilTemp: false },
+  { value: 'CONSTRUCTION_ASPHALT', label: 'Construction - Asphalt', requiresSoilTemp: false },
+  { value: 'CONSTRUCTION_INSULATION', label: 'Construction - Insulation', requiresSoilTemp: false },
+  { value: 'FILTRATION', label: 'Filtration Media', requiresSoilTemp: false },
+  { value: 'COMPOSTING', label: 'Composting Additive', requiresSoilTemp: true },
+  { value: 'OTHER', label: 'Other', requiresSoilTemp: false },
+] as const;
+
+// PURO METHODOLOGY: Incorporation methods (Section 3.6)
+export const INCORPORATION_METHODS = [
+  { value: 'TILLAGE', label: 'Tillage', description: 'Mixed into soil via tillage' },
+  { value: 'TOP_DRESSING', label: 'Top Dressing', description: 'Applied to soil surface' },
+  { value: 'MIXING', label: 'Mixing', description: 'Mixed into substrate (compost, concrete)' },
+  { value: 'EMBEDDING', label: 'Embedding', description: 'Embedded in construction material' },
+] as const;
+
+// PURO METHODOLOGY: End-of-life fates for non-soil applications
+export const END_OF_LIFE_FATES = [
+  { value: 'LANDFILL', label: 'Landfill', description: 'Disposed to landfill at end of life' },
+  { value: 'RECYCLING', label: 'Recycling', description: 'Recycled at end of life' },
+  { value: 'INCINERATION', label: 'Incineration', description: 'Incinerated at end of life' },
+] as const;
+
+// PURO METHODOLOGY: Permanence verification methods
+export const PERMANENCE_VERIFICATION_METHODS = [
+  { value: 'DOCUMENTATION', label: 'Documentation', description: 'Verified through documentation and records' },
+  { value: 'SITE_VISIT', label: 'Site Visit', description: 'Physical site inspection' },
+  { value: 'REMOTE_SENSING', label: 'Remote Sensing', description: 'Satellite or aerial monitoring' },
+] as const;
+
 // Base schema without superRefine for use with .omit() and .partial()
 const sequestrationEventBaseSchema = z.object({
   id: z.string().uuid().optional(),
@@ -15,11 +51,42 @@ const sequestrationEventBaseSchema = z.object({
   // Destination coordinates for network map
   destinationLat: z.coerce.number().min(-90).max(90).optional().nullable(),
   destinationLng: z.coerce.number().min(-180).max(180).optional().nullable(),
+  geocodeStatus: z.string().optional().nullable(),
+  // Route fields
+  routeGeometry: z.string().optional().nullable(),
+  routeDistanceKm: z.coerce.number().nonnegative().optional().nullable(),
+  routeDurationMin: z.coerce.number().nonnegative().optional().nullable(),
+  routeStatus: z.string().optional().nullable(),
+  routeCalculatedAt: z.coerce.date().optional().nullable(),
   sequestrationType: z.string().min(1, 'Sequestration type is required'),
   sequestrationTypeOther: z.string().optional().nullable(),
   status: z.enum(['draft', 'complete']).default('draft'),
   wizardStep: z.number().int().min(1).max(6).default(1),
   notes: z.string().optional().nullable(),
+
+  // PURO METHODOLOGY: End-use category (Section 3.6)
+  endUseCategory: z.string().optional().nullable(),
+  endUseSubcategory: z.string().optional().nullable(),
+
+  // PURO METHODOLOGY: Soil temperature for BC+200 model (Section 6.2, Table 6.1)
+  meanAnnualSoilTempC: z.coerce.number().min(7, 'Minimum soil temp is 7°C').max(40, 'Maximum soil temp is 40°C').optional().nullable(),
+  soilTempRegion: z.string().optional().nullable(),
+  soilTempDataSource: z.string().optional().nullable(),
+
+  // PURO METHODOLOGY: Calculated persistence (Equation 6.4)
+  persistenceFractionPercent: z.coerce.number().min(0).max(100).optional().nullable(),
+
+  // PURO METHODOLOGY: Incorporation details (Section 3.6)
+  incorporationMethod: z.enum(['TILLAGE', 'TOP_DRESSING', 'MIXING', 'EMBEDDING']).optional().nullable(),
+  incorporationDepthCm: z.coerce.number().positive().optional().nullable(),
+
+  // PURO METHODOLOGY: For non-soil applications
+  expectedProductLifetimeYears: z.coerce.number().int().positive().optional().nullable(),
+  endOfLifeFate: z.enum(['LANDFILL', 'RECYCLING', 'INCINERATION']).optional().nullable(),
+
+  // PURO METHODOLOGY: Permanence verification
+  permanenceVerificationMethod: z.enum(['DOCUMENTATION', 'SITE_VISIT', 'REMOTE_SENSING']).optional().nullable(),
+  reversalRiskAssessment: z.string().optional().nullable(),
 });
 
 // Refinement for conditional validation

@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { createProductionBatchSchema } from '@/lib/validations/production';
+import {
+  parsePaginationParams,
+  calculateSkip,
+  createPaginatedResponse,
+  serverErrorResponse,
+  validationErrorResponse,
+} from '@/lib/api-utils';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const pagination = parsePaginationParams(searchParams);
+
+    // Get total count for pagination
+    const total = await db.productionBatch.count();
+
+    // Fetch paginated data
     const productionBatches = await db.productionBatch.findMany({
       orderBy: { productionDate: 'desc' },
+      skip: calculateSkip(pagination.page, pagination.limit),
+      take: pagination.limit,
       include: {
         evidence: { select: { id: true } },
         feedstockDelivery: {
@@ -37,13 +53,10 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(productionBatches);
+    return NextResponse.json(createPaginatedResponse(productionBatches, total, pagination));
   } catch (error) {
     console.error('Error fetching production batches:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch production batches' },
-      { status: 500 }
-    );
+    return serverErrorResponse('Failed to fetch production batches');
   }
 }
 
@@ -54,10 +67,7 @@ export async function POST(request: NextRequest) {
     const result = createProductionBatchSchema.safeParse(restBody);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', issues: result.error.issues },
-        { status: 400 }
-      );
+      return validationErrorResponse(result.error.issues);
     }
 
     const { feedstockAllocations, ...batchData } = result.data;
@@ -186,9 +196,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(productionBatch, { status: 201 });
   } catch (error) {
     console.error('Error creating production batch:', error);
-    return NextResponse.json(
-      { error: 'Failed to create production batch' },
-      { status: 500 }
-    );
+    return serverErrorResponse('Failed to create production batch');
   }
 }

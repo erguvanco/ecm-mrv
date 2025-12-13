@@ -12,8 +12,9 @@ import {
   ArrowDownToLine,
   Network,
   Calculator,
-  Database,
-  FileCheck,
+  Award,
+  Calendar,
+  Building2,
   ChevronLeft,
   ChevronRight,
   X,
@@ -37,13 +38,13 @@ const navItems: NavItem[] = [
   { id: 'sequestration', label: 'Sequestration', icon: ArrowDownToLine, path: '/sequestration', section: 'BIOCHAR LIFECYCLE' },
   { id: 'network', label: 'Network', icon: Network, path: '/network', section: 'BIOCHAR LIFECYCLE' },
   // INTERNAL OPERATIONS
-  { id: 'transport', label: 'Logistics (On-Site)', icon: Truck, path: '/transport', section: 'INTERNAL OPERATIONS' },
-  { id: 'energy', label: 'Energy', icon: Zap, path: '/energy', section: 'INTERNAL OPERATIONS' },
-  // VERIFICATION
-  { id: 'lca', label: 'LCA & Verification', icon: Calculator, path: '/lca', section: 'VERIFICATION' },
-  { id: 'registry', label: 'Registry', icon: FileCheck, path: '/registry', section: 'VERIFICATION' },
-  // SYSTEM
-  { id: 'datasets', label: 'Datasets', icon: Database, path: '/datasets', section: 'SYSTEM' },
+  { id: 'transport', label: 'Logistics', icon: Truck, path: '/transport', section: 'OPERATIONS' },
+  { id: 'energy', label: 'Energy', icon: Zap, path: '/energy', section: 'OPERATIONS' },
+  // CORC (Puro.earth)
+  { id: 'facility', label: 'Facility', icon: Building2, path: '/facility', section: 'CORC' },
+  { id: 'monitoring', label: 'Monitoring', icon: Calendar, path: '/monitoring', section: 'CORC' },
+  { id: 'corc', label: 'CORC Registry', icon: Award, path: '/corc', section: 'CORC' },
+  { id: 'lca', label: 'Calculator', icon: Calculator, path: '/lca', section: 'CORC' },
 ];
 
 interface SidebarProps {

@@ -2,11 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { createSequestrationEventSchema } from '@/lib/validations/sequestration';
 import { calculateSequestrationRoute } from '@/lib/services/routing';
+import {
+  parsePaginationParams,
+  calculateSkip,
+  createPaginatedResponse,
+  serverErrorResponse,
+  validationErrorResponse,
+} from '@/lib/api-utils';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const pagination = parsePaginationParams(searchParams);
+
+    // Get total count for pagination
+    const total = await db.sequestrationEvent.count();
+
+    // Fetch paginated data
     const sequestrationEvents = await db.sequestrationEvent.findMany({
       orderBy: { finalDeliveryDate: 'desc' },
+      skip: calculateSkip(pagination.page, pagination.limit),
+      take: pagination.limit,
       include: {
         evidence: { select: { id: true } },
         batches: {
@@ -38,13 +54,10 @@ export async function GET() {
       ),
     }));
 
-    return NextResponse.json(eventsWithQuantity);
+    return NextResponse.json(createPaginatedResponse(eventsWithQuantity, total, pagination));
   } catch (error) {
     console.error('Error fetching sequestration events:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch sequestration events' },
-      { status: 500 }
-    );
+    return serverErrorResponse('Failed to fetch sequestration events');
   }
 }
 
@@ -56,10 +69,7 @@ export async function POST(request: NextRequest) {
     const result = createSequestrationEventSchema.safeParse(eventData);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', issues: result.error.issues },
-        { status: 400 }
-      );
+      return validationErrorResponse(result.error.issues);
     }
 
     const sequestrationEvent = await db.sequestrationEvent.create({
@@ -97,9 +107,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(sequestrationEvent, { status: 201 });
   } catch (error) {
     console.error('Error creating sequestration event:', error);
-    return NextResponse.json(
-      { error: 'Failed to create sequestration event' },
-      { status: 500 }
-    );
+    return serverErrorResponse('Failed to create sequestration event');
   }
 }

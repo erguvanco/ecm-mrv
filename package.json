@@ -16,6 +16,7 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@hookform/resolvers": "^3.10.0",
     "@prisma/client": "^6.2.1",
     "@types/qrcode": "^1.5.6",

@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { createTransportEventSchema } from '@/lib/validations/transport';
+import {
+  parsePaginationParams,
+  calculateSkip,
+  createPaginatedResponse,
+  serverErrorResponse,
+  validationErrorResponse,
+} from '@/lib/api-utils';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const pagination = parsePaginationParams(searchParams);
+
+    // Get total count for pagination
+    const total = await db.transportEvent.count();
+
+    // Fetch paginated data
     const transportEvents = await db.transportEvent.findMany({
       orderBy: { date: 'desc' },
+      skip: calculateSkip(pagination.page, pagination.limit),
+      take: pagination.limit,
       include: {
         evidence: { select: { id: true } },
         feedstockDelivery: {
@@ -17,13 +33,10 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(transportEvents);
+    return NextResponse.json(createPaginatedResponse(transportEvents, total, pagination));
   } catch (error) {
     console.error('Error fetching transport events:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch transport events' },
-      { status: 500 }
-    );
+    return serverErrorResponse('Failed to fetch transport events');
   }
 }
 
@@ -33,10 +46,7 @@ export async function POST(request: NextRequest) {
     const result = createTransportEventSchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', issues: result.error.issues },
-        { status: 400 }
-      );
+      return validationErrorResponse(result.error.issues);
     }
 
     const transportEvent = await db.transportEvent.create({
@@ -49,9 +59,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(transportEvent, { status: 201 });
   } catch (error) {
     console.error('Error creating transport event:', error);
-    return NextResponse.json(
-      { error: 'Failed to create transport event' },
-      { status: 500 }
-    );
+    return serverErrorResponse('Failed to create transport event');
   }
 }

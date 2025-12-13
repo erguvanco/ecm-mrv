@@ -42,6 +42,38 @@ model FeedstockDelivery {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  // PURO METHODOLOGY: Biomass category (Section 3.4, Categories A-O)
+  puroCategory            String?  // A, B, C, D, E, F, G, H, I, J, K, L, M, N, O
+  puroCategoryName        String?  // Human-readable category name
+
+  // PURO METHODOLOGY: Sustainability certification
+  sustainabilityCertification String? // FSC, PEFC, RSB, ISCC, SBP, etc.
+  certificationNumber     String?
+  certificationExpiry     DateTime?
+
+  // PURO METHODOLOGY: Source classification
+  isDedicatedCrop         Boolean  @default(false)
+  isPrimaryLandDriver     Boolean  @default(false)
+  sourceClassification    String?  // RESIDUE, WASTE, DEDICATED_CROP
+
+  // PURO METHODOLOGY: iLUC risk assessment (Section 8.2.3)
+  ilucRiskLevel           String?  // LOW, HIGH
+  ilucCertificationId     String?
+
+  // PURO METHODOLOGY: Carbon/energy content
+  carbonContentPercent    Float?   // For carbon tracking
+  lowerHeatingValueGJ     Float?   // GJ per dry tonne (for iLUC calculation)
+
+  // PURO METHODOLOGY: Supply chain emissions (E_biomass, Section 7.3)
+  cultivationEmissionsKgCO2e    Float?  // For dedicated crops only
+  collectionEmissionsKgCO2e     Float?  // Collection/gathering emissions
+  preprocessingEmissionsKgCO2e  Float?  // Chipping, drying, etc.
+
+  // PURO METHODOLOGY: First gathering point (Section 7.3.5)
+  firstGatheringPointAddress String?
+  firstGatheringPointLat     Float?
+  firstGatheringPointLng     Float?
+
   productionBatches       ProductionBatch[]
   productionAllocations   ProductionFeedstock[]
   transportEvents         TransportEvent[]
@@ -51,6 +83,8 @@ model FeedstockDelivery {
   @@index([feedstockType])
   @@index([geocodeStatus])
   @@index([routeStatus])
+  @@index([puroCategory])
+  @@index([ilucRiskLevel])
 }
 
 // ============================================
@@ -73,14 +107,47 @@ model ProductionBatch {
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
 
+  // PURO METHODOLOGY: Facility link
+  facilityId                  String?
+  facility                    Facility? @relation(fields: [facilityId], references: [id])
+
+  // PURO METHODOLOGY: Biochar quality parameters
+  organicCarbonPercent        Float?   // C_org from lab test
+  totalCarbonPercent          Float?   // C_tot from lab test
+  inorganicCarbonPercent      Float?   // C_inorg from lab test
+  hydrogenPercent             Float?   // H from lab test
+  hCorgRatio                  Float?   // H/C_org molar ratio (Equation 6.5)
+  qualityValidationStatus     String   @default("pending") // pending, passed, failed
+
+  // PURO METHODOLOGY: Dry mass (for accurate CORC calculation)
+  dryMassTonnes               Float?   // Q_biochar dry weight
+  moisturePercent             Float?
+
+  // PURO METHODOLOGY: Direct stack emissions (Section 3.5)
+  ch4EmissionsKg              Float?   // Methane emissions at stack
+  n2oEmissionsKg              Float?   // Nitrous oxide emissions at stack
+  fossilCO2EmissionsKg        Float?   // Fossil CO2 from impurities
+
+  // PURO METHODOLOGY: Co-product allocation (Section 7.5)
+  coProductHeatMJ             Float?   // Heat co-product energy
+  coProductElectricityKWh     Float?   // Electricity co-product
+  coProductOilLitres          Float?   // Bio-oil co-product
+  allocationFactorBiochar     Float    @default(1.0) // 0-1, biochar's share
+
   feedstockAllocations        ProductionFeedstock[]
   energyUsages                EnergyUsage[]
   sequestrationBatches        SequestrationBatch[]
   bcuBatches                  BCUProductionBatch[]
   evidence                    EvidenceFile[]
 
+  // PURO METHODOLOGY: Lab tests and CORC links
+  labTests                    BiocharLabTest[]
+  corcBatches                 CORCProductionBatch[]
+
   @@index([productionDate])
   @@index([status])
+  @@index([facilityId])
+  @@index([qualityValidationStatus])
 }
 
 // Join table for Production Batch -> Feedstock Delivery (many-to-many with percentage)
@@ -190,15 +257,43 @@ model SequestrationEvent {
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
 
+  // PURO METHODOLOGY: End-use category (Section 3.6)
+  endUseCategory              String?   // SOIL_AGRICULTURE, SOIL_FORESTRY, SOIL_URBAN, CONSTRUCTION_CONCRETE, etc.
+  endUseSubcategory           String?
+
+  // PURO METHODOLOGY: Soil temperature for BC+200 model (Section 6.2, Table 6.1)
+  meanAnnualSoilTempC         Float?    // 7-40°C range
+  soilTempRegion              String?   // Sub-national admin region name
+  soilTempDataSource          String?   // How temp was determined
+
+  // PURO METHODOLOGY: Calculated persistence (Equation 6.4)
+  persistenceFractionPercent  Float?    // PF calculated from H/Corg and soil temp
+
+  // PURO METHODOLOGY: Incorporation details (Section 3.6)
+  incorporationMethod         String?   // TILLAGE, TOP_DRESSING, MIXING, EMBEDDING
+  incorporationDepthCm        Float?
+
+  // PURO METHODOLOGY: For non-soil applications
+  expectedProductLifetimeYears Int?
+  endOfLifeFate               String?   // LANDFILL, RECYCLING, INCINERATION
+
+  // PURO METHODOLOGY: Permanence verification
+  permanenceVerificationMethod String?  // DOCUMENTATION, SITE_VISIT, REMOTE_SENSING
+  reversalRiskAssessment      String?
+
   batches                     SequestrationBatch[]
   transportEvents             TransportEvent[]
   bcuEvents                   BCUSequestrationEvent[]
   evidence                    EvidenceFile[]
 
+  // PURO METHODOLOGY: CORC links
+  corcEvents                  CORCSequestrationEvent[]
+
   @@index([finalDeliveryDate])
   @@index([status])
   @@index([geocodeStatus])
   @@index([routeStatus])
+  @@index([endUseCategory])
 }
 
 model SequestrationBatch {
@@ -221,7 +316,7 @@ model EvidenceFile {
   fileSize              Int
   mimeType              String
   storagePath           String   // Simulated path
-  category              String   // sustainability, transport_license, weight_in, biochar_out, temperature_log, delivery, regulatory, storage, general
+  category              String   // sustainability, transport_license, weight_in, biochar_out, temperature_log, delivery, regulatory, storage, general, lab_report
   description           String?
   uploadedAt            DateTime @default(now())
 
@@ -243,6 +338,10 @@ model EvidenceFile {
 
   bcuId                 String?
   bcu                   BCU? @relation(fields: [bcuId], references: [id], onDelete: Cascade)
+
+  // PURO METHODOLOGY: CORC relation
+  corcId                String?
+  corc                  CORCIssuance? @relation(fields: [corcId], references: [id], onDelete: Cascade)
 
   @@index([category])
   @@index([uploadedAt])
@@ -398,4 +497,228 @@ model QRScanLog {
 
   @@index([entityType, entityId])
   @@index([scannedAt])
+}
+
+// ============================================
+// PURO METHODOLOGY: FACILITY
+// ============================================
+model Facility {
+  id                              String   @id @default(uuid())
+  name                            String
+  registrationNumber              String   @unique
+  baselineType                    String   @default("NEW_BUILT") // NEW_BUILT, RETROFIT_FACILITY, CHARCOAL_REPURPOSE
+
+  // Location
+  address                         String?
+  lat                             Float?
+  lng                             Float?
+  country                         String?
+
+  // Crediting period (10 years default)
+  creditingPeriodStart            DateTime
+  creditingPeriodEnd              DateTime
+
+  // Infrastructure for embodied emissions (E_emb)
+  infrastructureLifetimeYears     Int      @default(10)
+  totalInfrastructureEmissionsTCO2e Float  @default(0)
+
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+
+  monitoringPeriods               MonitoringPeriod[]
+  productionBatches               ProductionBatch[]
+  leakageAssessments              LeakageAssessment[]
+
+  @@index([baselineType])
+}
+
+// ============================================
+// PURO METHODOLOGY: MONITORING PERIOD
+// ============================================
+model MonitoringPeriod {
+  id                              String   @id @default(uuid())
+  facilityId                      String
+  facility                        Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  periodStart                     DateTime
+  periodEnd                       DateTime
+  status                          String   @default("active") // active, closed, verified
+
+  // CORC calculation results (cached after calculation)
+  cStoredTCO2e                    Float?
+  cBaselineTCO2e                  Float?
+  cLossTCO2e                      Float?
+  persistenceFractionPercent      Float?
+  eProjectTCO2e                   Float?
+  eLeakageTCO2e                   Float?
+  netCORCsTCO2e                   Float?
+
+  calculatedAt                    DateTime?
+
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+
+  corcIssuances                   CORCIssuance[]
+
+  @@index([facilityId])
+  @@index([status])
+  @@index([periodStart, periodEnd])
+}
+
+// ============================================
+// PURO METHODOLOGY: BIOCHAR LAB TEST
+// ============================================
+model BiocharLabTest {
+  id                              String   @id @default(uuid())
+  productionBatchId               String
+  productionBatch                 ProductionBatch @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+
+  testDate                        DateTime
+  labName                         String
+  labAccreditation                String?
+
+  // Carbon analysis (required for Puro)
+  totalCarbonPercent              Float    // C_tot
+  inorganicCarbonPercent          Float    @default(0) // C_inorg
+  organicCarbonPercent            Float    // C_org = C_tot - C_inorg
+  hydrogenPercent                 Float    // H
+
+  // Calculated H/C_org ratio (Equation 6.5)
+  hCorgRatio                      Float
+
+  // Quality validation (must be <= 0.7 per Puro methodology)
+  passesQualityThreshold          Boolean
+
+  // Analytical methods
+  carbonMethod                    String?  // ISO_16948, DIN_51732, ASTM_E870
+  inorganicCarbonMethod           String?  // DIN_51726, ISO_925, ASTM_D4373
+
+  // Moisture
+  moisturePercent                 Float?
+  moistureMethod                  String?  // ISO_589, DIN_51718, ASTM_D1762
+
+  // Nitrogen (optional)
+  nitrogenPercent                 Float?
+
+  // Evidence
+  reportFileId                    String?
+
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+
+  @@index([productionBatchId])
+  @@index([testDate])
+}
+
+// ============================================
+// PURO METHODOLOGY: CORC ISSUANCE (replaces BCU)
+// ============================================
+model CORCIssuance {
+  id                              String   @id @default(uuid())
+  serialNumber                    String   @unique
+  monitoringPeriodId              String
+  monitoringPeriod                MonitoringPeriod @relation(fields: [monitoringPeriodId], references: [id])
+
+  // CORC calculation breakdown (Equation 5.1)
+  cStoredTCO2e                    Float    // Gross carbon stored
+  cBaselineTCO2e                  Float    // Baseline carbon storage
+  cLossTCO2e                      Float    // Carbon loss (from persistence)
+  persistenceFractionPercent      Float    // BC+200 persistence factor
+  eProjectTCO2e                   Float    // Project emissions (LCA)
+  eLeakageTCO2e                   Float    // Leakage emissions
+  netCORCsTCO2e                   Float    // Final CORC amount
+
+  // Permanence type
+  permanenceType                  String   @default("BC200+") // BC100+, BC200+
+
+  // Status lifecycle
+  status                          String   @default("draft") // draft, issued, retired
+  issuanceDate                    DateTime?
+
+  // Ownership
+  ownerName                       String?
+  ownerAccountId                  String?
+
+  // Retirement
+  retirementDate                  DateTime?
+  retirementBeneficiary           String?
+  retirementPurpose               String?
+
+  notes                           String?
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+
+  productionBatches               CORCProductionBatch[]
+  sequestrationEvents             CORCSequestrationEvent[]
+  evidence                        EvidenceFile[]
+
+  @@index([status])
+  @@index([monitoringPeriodId])
+  @@index([issuanceDate])
+}
+
+// ============================================
+// PURO METHODOLOGY: LEAKAGE ASSESSMENT
+// ============================================
+model LeakageAssessment {
+  id                              String   @id @default(uuid())
+  facilityId                      String
+  facility                        Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  monitoringPeriodId              String?
+
+  assessmentDate                  DateTime
+  assessorName                    String?
+
+  // Ecological leakage - facility construction (Section 8.2.1)
+  facilityEcologicalStatus        String   @default("MITIGATED") // MITIGATED, QUANTIFIED, NOT_APPLICABLE
+  facilityEcologicalKgCO2e        Float    @default(0)
+  facilityEcologicalNotes         String?
+
+  // Ecological leakage - biomass sourcing (Section 8.2.2)
+  biomassEcologicalStatus         String   @default("MITIGATED")
+  biomassEcologicalKgCO2e         Float    @default(0)
+  biomassEcologicalNotes          String?
+
+  // Market/activity shifting leakage - AFOLU sector (Section 8.2.3)
+  afoluLeakageStatus              String   @default("MITIGATED")
+  afoluLeakageKgCO2e              Float    @default(0)
+  afoluNotes                      String?
+
+  // Market/activity shifting leakage - energy/materials (Section 8.2.4-8.2.6)
+  energyMaterialLeakageStatus     String   @default("NOT_APPLICABLE")
+  energyMaterialLeakageKgCO2e     Float    @default(0)
+  energyMaterialNotes             String?
+
+  // iLUC contribution (for high-risk feedstocks per Section 8.3.4)
+  ilucContributionKgCO2e          Float    @default(0)
+
+  // Total leakage (Equation 8.1: E_leakage = L_ECO + L_MA)
+  totalLeakageKgCO2e              Float    @default(0)
+
+  notes                           String?
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+
+  @@index([facilityId])
+  @@index([monitoringPeriodId])
+}
+
+// ============================================
+// PURO METHODOLOGY: CORC JOIN TABLES
+// ============================================
+model CORCProductionBatch {
+  corcId                          String
+  productionBatchId               String
+  corc                            CORCIssuance    @relation(fields: [corcId], references: [id], onDelete: Cascade)
+  productionBatch                 ProductionBatch @relation(fields: [productionBatchId], references: [id])
+
+  @@id([corcId, productionBatchId])
+}
+
+model CORCSequestrationEvent {
+  corcId                          String
+  sequestrationId                 String
+  corc                            CORCIssuance       @relation(fields: [corcId], references: [id], onDelete: Cascade)
+  sequestration                   SequestrationEvent @relation(fields: [sequestrationId], references: [id])
+
+  @@id([corcId, sequestrationId])
 }

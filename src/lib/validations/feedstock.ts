@@ -1,5 +1,23 @@
 import { z } from 'zod';
 
+// Note: SOURCE_CLASSIFICATIONS is exported from './puro-categories'
+
+// PURO METHODOLOGY: iLUC risk levels (Section 8.2.3)
+export const ILUC_RISK_LEVELS = [
+  { value: 'LOW', label: 'Low Risk', description: 'Residues, wastes, or certified sustainable' },
+  { value: 'HIGH', label: 'High Risk', description: 'Requires iLUC factor application' },
+] as const;
+
+// PURO METHODOLOGY: Sustainability certifications
+export const SUSTAINABILITY_CERTIFICATIONS = [
+  { value: 'FSC', label: 'FSC', description: 'Forest Stewardship Council' },
+  { value: 'PEFC', label: 'PEFC', description: 'Programme for the Endorsement of Forest Certification' },
+  { value: 'RSB', label: 'RSB', description: 'Roundtable on Sustainable Biomaterials' },
+  { value: 'ISCC', label: 'ISCC', description: 'International Sustainability & Carbon Certification' },
+  { value: 'SBP', label: 'SBP', description: 'Sustainable Biomass Program' },
+  { value: 'OTHER', label: 'Other', description: 'Other certification scheme' },
+] as const;
+
 // Base schema without superRefine for use with .omit() and .partial()
 const feedstockDeliveryBaseSchema = z.object({
   id: z.string().uuid().optional(),
@@ -20,6 +38,45 @@ const feedstockDeliveryBaseSchema = z.object({
   sourceAddress: z.string().min(1, 'Source address is required'),
   sourceLat: z.coerce.number().min(-90).max(90),
   sourceLng: z.coerce.number().min(-180).max(180),
+  geocodeStatus: z.string().optional().nullable(),
+  // Route fields
+  routeGeometry: z.string().optional().nullable(),
+  routeDistanceKm: z.coerce.number().nonnegative().optional().nullable(),
+  routeDurationMin: z.coerce.number().nonnegative().optional().nullable(),
+  routeStatus: z.string().optional().nullable(),
+  routeCalculatedAt: z.coerce.date().optional().nullable(),
+
+  // PURO METHODOLOGY: Biomass category (Section 3.4, Categories A-O)
+  puroCategory: z.string().optional().nullable(),
+  puroCategoryName: z.string().optional().nullable(),
+
+  // PURO METHODOLOGY: Sustainability certification
+  sustainabilityCertification: z.string().optional().nullable(),
+  certificationNumber: z.string().optional().nullable(),
+  certificationExpiry: z.coerce.date().optional().nullable(),
+
+  // PURO METHODOLOGY: Source classification
+  isDedicatedCrop: z.boolean().default(false),
+  isPrimaryLandDriver: z.boolean().default(false),
+  sourceClassification: z.enum(['RESIDUE', 'WASTE', 'DEDICATED_CROP']).optional().nullable(),
+
+  // PURO METHODOLOGY: iLUC risk assessment (Section 8.2.3)
+  ilucRiskLevel: z.enum(['LOW', 'HIGH']).optional().nullable(),
+  ilucCertificationId: z.string().optional().nullable(),
+
+  // PURO METHODOLOGY: Carbon/energy content
+  carbonContentPercent: z.coerce.number().min(0).max(100, 'Must be 0-100%').optional().nullable(),
+  lowerHeatingValueGJ: z.coerce.number().positive('LHV must be positive').optional().nullable(),
+
+  // PURO METHODOLOGY: Supply chain emissions (E_biomass, Section 7.3)
+  cultivationEmissionsKgCO2e: z.coerce.number().nonnegative('Emissions cannot be negative').optional().nullable(),
+  collectionEmissionsKgCO2e: z.coerce.number().nonnegative('Emissions cannot be negative').optional().nullable(),
+  preprocessingEmissionsKgCO2e: z.coerce.number().nonnegative('Emissions cannot be negative').optional().nullable(),
+
+  // PURO METHODOLOGY: First gathering point (Section 7.3.5)
+  firstGatheringPointAddress: z.string().optional().nullable(),
+  firstGatheringPointLat: z.coerce.number().min(-90).max(90).optional().nullable(),
+  firstGatheringPointLng: z.coerce.number().min(-180).max(180).optional().nullable(),
 });
 
 // Refinement for conditional validation

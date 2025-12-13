@@ -2,172 +2,380 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('Seeding database for 2025 Sakarya operations...');
+// ============================================
+// CONFIGURATION
+// ============================================
 
-  // Wipe existing records (order matters for FK constraints)
+const PLANT = {
+  name: 'Sakarya Biochar Facility',
+  address: 'Soğucak OSB, Sanayi Cd. No:94, 54160 Söğütlü/Sakarya, Türkiye',
+  lat: 40.892533,
+  lng: 30.516827,
+  country: 'TR',
+};
+
+const FEEDSTOCK_SOURCES = [
+  {
+    name: 'Geyve Fındık Kooperatifi',
+    address: 'Geyve Fındık Kooperatifi, Sakarya, Türkiye',
+    lat: 40.5075,
+    lng: 30.2927,
+    feedstockType: 'hazelnut_shells',
+    puroCategory: 'A',
+    puroCategoryName: 'Forestry residues',
+    sourceClassification: 'RESIDUE',
+    ilucRiskLevel: 'LOW',
+    sustainabilityCert: 'FSC',
+    distanceKm: 38,
+    weight: 25, // Selection weight for distribution
+  },
+  {
+    name: 'Karasu Fındık Deposu',
+    address: 'Karasu Fındık Deposu, Sakarya, Türkiye',
+    lat: 41.0719,
+    lng: 30.785,
+    feedstockType: 'hazelnut_shells',
+    puroCategory: 'A',
+    puroCategoryName: 'Forestry residues',
+    sourceClassification: 'RESIDUE',
+    ilucRiskLevel: 'LOW',
+    sustainabilityCert: 'FSC',
+    distanceKm: 44,
+    weight: 25,
+  },
+  {
+    name: 'Akyazı Orman İşletmesi',
+    address: 'Akyazı Orman İşletmesi, Sakarya, Türkiye',
+    lat: 40.6857,
+    lng: 30.6225,
+    feedstockType: 'wood_chips',
+    puroCategory: 'B',
+    puroCategoryName: 'Forest thinnings',
+    sourceClassification: 'RESIDUE',
+    ilucRiskLevel: 'LOW',
+    sustainabilityCert: 'PEFC',
+    distanceKm: 62,
+    weight: 15,
+  },
+  {
+    name: 'Sapanca Orman Deposu',
+    address: 'Sapanca Orman Deposu, Sakarya, Türkiye',
+    lat: 40.6917,
+    lng: 30.2686,
+    feedstockType: 'logging_residues',
+    puroCategory: 'A',
+    puroCategoryName: 'Forestry residues',
+    sourceClassification: 'RESIDUE',
+    ilucRiskLevel: 'LOW',
+    sustainabilityCert: 'FSC',
+    distanceKm: 70,
+    weight: 15,
+  },
+  {
+    name: 'Pamukova Mısır Kooperatifi',
+    address: 'Pamukova Mısır Kooperatifi, Sakarya, Türkiye',
+    lat: 40.5108,
+    lng: 30.1736,
+    feedstockType: 'corn_stover',
+    puroCategory: 'G',
+    puroCategoryName: 'Agricultural residues',
+    sourceClassification: 'RESIDUE',
+    ilucRiskLevel: 'LOW',
+    sustainabilityCert: null,
+    distanceKm: 48,
+    weight: 20,
+  },
+];
+
+const SEQUESTRATION_DESTINATIONS = [
+  {
+    quarter: 1,
+    name: 'Adapazarı Tarım Kooperatifi',
+    address: 'Adapazarı Tarım Kooperatifi, Sakarya, Türkiye',
+    lat: 40.7891,
+    lng: 30.4025,
+    postcode: '54100',
+    type: 'soil',
+    endUseCategory: 'SOIL_AGRICULTURE',
+    storage: true,
+    storageConditions: 'covered_outdoor',
+    incorporationMethod: 'TILLAGE',
+    incorporationDepthCm: 20,
+    distanceKm: 25,
+  },
+  {
+    quarter: 2,
+    name: 'Kocaeli Beton Santrali',
+    address: 'Kocaeli Beton Santrali, Kocaeli, Türkiye',
+    lat: 40.7656,
+    lng: 29.9167,
+    postcode: '41400',
+    type: 'construction',
+    endUseCategory: 'CONSTRUCTION_CONCRETE',
+    storage: false,
+    storageConditions: null,
+    incorporationMethod: null,
+    incorporationDepthCm: null,
+    distanceKm: 85,
+  },
+  {
+    quarter: 3,
+    name: 'Bursa Organik Gübre Tesisi',
+    address: 'Bursa Organik Gübre Tesisi, Bursa, Türkiye',
+    lat: 40.1833,
+    lng: 29.0667,
+    postcode: '16200',
+    type: 'compost',
+    endUseCategory: 'COMPOST_COMMERCIAL',
+    storage: true,
+    storageConditions: 'indoor',
+    incorporationMethod: 'MIXING',
+    incorporationDepthCm: null,
+    distanceKm: 140,
+  },
+  {
+    quarter: 4,
+    name: 'Bilecik Tarım İşletmesi',
+    address: 'Bilecik Tarım İşletmesi, Bilecik, Türkiye',
+    lat: 40.0567,
+    lng: 30.0189,
+    postcode: '11000',
+    type: 'soil',
+    endUseCategory: 'SOIL_AGRICULTURE',
+    storage: true,
+    storageConditions: 'covered_outdoor',
+    incorporationMethod: 'TILLAGE',
+    incorporationDepthCm: 25,
+    distanceKm: 95,
+  },
+];
+
+// Turkish holidays 2025
+const HOLIDAYS_2025 = [
+  new Date('2025-01-01'), // New Year
+  new Date('2025-03-30'), // Ramadan Bayramı
+  new Date('2025-03-31'),
+  new Date('2025-04-01'),
+  new Date('2025-04-02'),
+  new Date('2025-04-23'), // National Sovereignty
+  new Date('2025-05-01'), // Labor Day
+  new Date('2025-05-19'), // Youth Day
+  new Date('2025-06-06'), // Kurban Bayramı
+  new Date('2025-06-07'),
+  new Date('2025-06-08'),
+  new Date('2025-06-09'),
+  new Date('2025-08-30'), // Victory Day
+  new Date('2025-10-29'), // Republic Day
+];
+
+// Summer maintenance: Aug 15-25
+const MAINTENANCE_START = new Date('2025-08-15');
+const MAINTENANCE_END = new Date('2025-08-25');
+
+// End date: Dec 13, 2025
+const SEED_END_DATE = new Date('2025-12-13');
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+function isHoliday(date: Date): boolean {
+  const dateStr = date.toISOString().slice(0, 10);
+  return HOLIDAYS_2025.some(h => h.toISOString().slice(0, 10) === dateStr);
+}
+
+function isMaintenanceDay(date: Date): boolean {
+  return date >= MAINTENANCE_START && date <= MAINTENANCE_END;
+}
+
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6; // Sunday or Saturday
+}
+
+function isOperatingDay(date: Date): boolean {
+  if (date > SEED_END_DATE) return false;
+  if (isHoliday(date)) return false;
+  if (isMaintenanceDay(date)) return false;
+  if (isWeekend(date)) return false;
+  return true;
+}
+
+// Deterministic pseudo-random number generator
+function seededRandom(seed: number): number {
+  return ((seed * 9301 + 49297) % 233280) / 233280;
+}
+
+// Weighted random source selection
+const totalWeight = FEEDSTOCK_SOURCES.reduce((sum, s) => sum + s.weight, 0);
+function getRandomSource(seed: number) {
+  let random = seededRandom(seed) * totalWeight;
+  let cumulative = 0;
+  for (const source of FEEDSTOCK_SOURCES) {
+    cumulative += source.weight;
+    if (random < cumulative) return source;
+  }
+  return FEEDSTOCK_SOURCES[0];
+}
+
+// Get quarter from month (0-indexed)
+function getQuarter(month: number): number {
+  return Math.floor(month / 3) + 1;
+}
+
+// ============================================
+// MAIN SEED FUNCTION
+// ============================================
+
+async function main() {
+  console.log('🌱 Seeding database for 2025 Sakarya operations (2x SCALE)...\n');
+
+  // ============================================
+  // PHASE 1: CLEAR ALL EXISTING DATA
+  // ============================================
+  console.log('Phase 1: Clearing existing data...');
+
   await prisma.qRScanLog.deleteMany();
   await prisma.evidenceFile.deleteMany();
+  await prisma.cORCProductionBatch.deleteMany();
+  await prisma.cORCSequestrationEvent.deleteMany();
+  await prisma.cORCIssuance.deleteMany();
   await prisma.bCUProductionBatch.deleteMany();
   await prisma.bCUSequestrationEvent.deleteMany();
-  await prisma.sequestrationBatch.deleteMany();
   await prisma.bCU.deleteMany();
+  await prisma.leakageAssessment.deleteMany();
+  await prisma.monitoringPeriod.deleteMany();
+  await prisma.biocharLabTest.deleteMany();
+  await prisma.sequestrationBatch.deleteMany();
   await prisma.sequestrationEvent.deleteMany();
   await prisma.transportEvent.deleteMany();
   await prisma.energyUsage.deleteMany();
   await prisma.productionFeedstock.deleteMany();
   await prisma.productionBatch.deleteMany();
   await prisma.feedstockDelivery.deleteMany();
+  await prisma.facility.deleteMany();
   await prisma.geocodeCache.deleteMany();
   await prisma.routeCache.deleteMany();
 
-  // Keep the Sakarya plant in place
+  console.log('  ✓ All existing data cleared\n');
+
+  // ============================================
+  // PHASE 2: CREATE FOUNDATION DATA
+  // ============================================
+  console.log('Phase 2: Creating foundation data...');
+
+  // Plant Settings
   await prisma.plantSettings.upsert({
     where: { id: 'singleton' },
     update: {
-      plantName: 'Sakarya Biochar Facility',
-      address: 'Soğucak OSB, Sanayi Cd. No:94, 54160 Söğütlü/Sakarya, Türkiye',
-      lat: 40.892533,
-      lng: 30.516827,
+      plantName: PLANT.name,
+      address: PLANT.address,
+      lat: PLANT.lat,
+      lng: PLANT.lng,
     },
     create: {
       id: 'singleton',
-      plantName: 'Sakarya Biochar Facility',
-      address: 'Soğucak OSB, Sanayi Cd. No:94, 54160 Söğütlü/Sakarya, Türkiye',
-      lat: 40.892533,
-      lng: 30.516827,
+      plantName: PLANT.name,
+      address: PLANT.address,
+      lat: PLANT.lat,
+      lng: PLANT.lng,
     },
   });
+  console.log('  ✓ Plant settings configured');
 
-  console.log('Creating 2025 feedstock deliveries (2-3 trucks/day, 40-50t total)...');
+  // Facility (for PURO methodology)
+  const facility = await prisma.facility.create({
+    data: {
+      name: PLANT.name,
+      registrationNumber: 'PURO-TR-SAK-2025-001',
+      baselineType: 'NEW_BUILT',
+      address: PLANT.address,
+      lat: PLANT.lat,
+      lng: PLANT.lng,
+      country: PLANT.country,
+      creditingPeriodStart: new Date('2025-01-01'),
+      creditingPeriodEnd: new Date('2034-12-31'),
+      infrastructureLifetimeYears: 20,
+      totalInfrastructureEmissionsTCO2e: 450, // Facility construction emissions
+    },
+  });
+  console.log('  ✓ Facility registered with 10-year crediting period\n');
+
+  // ============================================
+  // PHASE 3: GENERATE FEEDSTOCK DELIVERIES
+  // ============================================
+  console.log('Phase 3: Generating feedstock deliveries (2x scale)...');
 
   const start = new Date('2025-01-01');
-  const daysInYear = 365;
-
-  // 2-3 trucks per day pattern
-  const dailyTruckCount = (dayIndex: number) => {
-    // Sunday (day 0): 2 trucks, weekdays vary 2-3, occasional 3
-    const dayOfWeek = dayIndex % 7;
-    if (dayOfWeek === 0) return 2; // Sunday - lighter
-    if (dayOfWeek === 6) return 2; // Saturday - lighter
-    return 2 + (dayIndex % 3 === 0 ? 1 : 0); // Weekdays: 2-3 trucks
-  };
-
-  // Feedstock sources with realistic types
-  // ~50% hazelnut shells, ~30% woody biomass, ~20% corn stover
-  const sources = [
-    {
-      address: 'Geyve Fındık Kooperatifi, Sakarya, Türkiye',
-      lat: 40.5075,
-      lng: 30.2927,
-      feedstockType: 'hazelnut_shells',
-      note: 'Hazelnut shells - premium quality',
-      distanceKm: 38,
-      weight: 50, // selection weight for random distribution
-    },
-    {
-      address: 'Karasu Fındık Deposu, Sakarya, Türkiye',
-      lat: 41.0719,
-      lng: 30.785,
-      feedstockType: 'hazelnut_shells',
-      note: 'Hazelnut shells - low moisture',
-      distanceKm: 44,
-      weight: 50, // 50% total hazelnut
-    },
-    {
-      address: 'Akyazı Orman İşletmesi, Sakarya, Türkiye',
-      lat: 40.6857,
-      lng: 30.6225,
-      feedstockType: 'wood_chips',
-      note: 'Mixed hardwood chips - beech/oak',
-      distanceKm: 62,
-      weight: 15,
-    },
-    {
-      address: 'Sapanca Orman Deposu, Sakarya, Türkiye',
-      lat: 40.6917,
-      lng: 30.2686,
-      feedstockType: 'logging_residues',
-      note: 'Pine/beech logging residues',
-      distanceKm: 70,
-      weight: 15, // 30% total woody
-    },
-    {
-      address: 'Pamukova Mısır Kooperatifi, Sakarya, Türkiye',
-      lat: 40.5108,
-      lng: 30.1736,
-      feedstockType: 'corn_stover',
-      note: 'Corn stover - stalks and cobs',
-      distanceKm: 48,
-      weight: 20, // 20% corn
-    },
-  ];
-
-  // Weighted random source selection
-  const totalWeight = sources.reduce((sum, s) => sum + s.weight, 0);
-  const getRandomSource = (seed: number) => {
-    let random = (seed * 9301 + 49297) % 233280 / 233280; // Deterministic pseudo-random
-    random *= totalWeight;
-    let cumulative = 0;
-    for (const source of sources) {
-      cumulative += source.weight;
-      if (random < cumulative) return source;
-    }
-    return sources[0];
-  };
-
   const feedstocks: Awaited<ReturnType<typeof prisma.feedstockDelivery.create>>[] = [];
-  let truckCounter = 100;
+  let truckCounter = 1000;
 
-  for (let d = 0; d < daysInYear; d++) {
+  for (let d = 0; d < 365; d++) {
     const date = new Date(start);
     date.setDate(start.getDate() + d);
 
-    // Skip ~5% of days for maintenance/holidays
-    if (d === 0 || d === 1 || d === 105 || d === 106 || d === 255 || d === 256) {
-      // New Year, Eid holidays, Summer maintenance
-      continue;
-    }
+    if (!isOperatingDay(date)) continue;
 
-    const trucksToday = dailyTruckCount(d);
-    const targetDailyTonnes = 40 + (d % 11); // 40-50 tonnes target per day
+    // 2x SCALE: 4-8 trucks per day (average 6)
+    const baseTrucks = 5 + (d % 4); // 5-8 trucks
+    const trucksToday = Math.max(4, baseTrucks);
+
+    // Target: 80-120 tonnes per day (2x scale)
+    const targetDailyTonnes = 90 + seededRandom(d) * 30;
 
     for (let t = 0; t < trucksToday; t++) {
       const src = getRandomSource(d * 100 + t);
 
-      // Calculate weight per truck to hit daily target
-      // Trucks carry 14-22 tonnes depending on vehicle
+      // Trucks carry 14-22 tonnes
       const baseWeight = targetDailyTonnes / trucksToday;
-      const variance = ((d + t) % 5 - 2) * 1.5; // -3 to +3 variance
+      const variance = (seededRandom(d * 1000 + t) - 0.5) * 6;
       const weight = Math.max(14, Math.min(22, baseWeight + variance));
 
       truckCounter++;
+      const certExpiry = new Date('2026-12-31');
+
       const delivery = await prisma.feedstockDelivery.create({
         data: {
           date,
-          vehicleId: `34 SAK ${String(truckCounter).padStart(3, '0')}`,
-          vehicleDescription: weight > 18 ? 'Articulated Truck (>33t)' : 'Rigid Truck (>17 tonnes)',
+          vehicleId: `34 SAK ${String(truckCounter).padStart(4, '0')}`,
+          vehicleDescription: weight > 18 ? 'Articulated Truck (>33t)' : 'Rigid Truck (>17t)',
           deliveryDistanceKm: src.distanceKm,
           weightTonnes: Number(weight.toFixed(1)),
-          volumeM3: Number((weight * 2.2).toFixed(1)), // Approximate volume based on bulk density
+          volumeM3: Number((weight * 2.2).toFixed(1)),
           feedstockType: src.feedstockType,
           fuelType: 'diesel',
-          fuelAmount: Number((src.distanceKm * 0.35 + weight * 0.8).toFixed(1)), // Realistic diesel consumption
+          fuelAmount: Number((src.distanceKm * 0.35 + weight * 0.8).toFixed(1)),
           sourceAddress: src.address,
           sourceLat: src.lat,
           sourceLng: src.lng,
           geocodeStatus: 'success',
-          routeStatus: 'success',
-          notes: `${src.note} delivery`,
+          routeStatus: 'pending', // Will be calculated
+          routeDistanceKm: src.distanceKm * 1.15, // Approximate road distance
+          notes: `${src.name} - ${src.puroCategoryName}`,
+          // PURO methodology fields
+          puroCategory: src.puroCategory,
+          puroCategoryName: src.puroCategoryName,
+          sourceClassification: src.sourceClassification,
+          ilucRiskLevel: src.ilucRiskLevel,
+          sustainabilityCertification: src.sustainabilityCert,
+          certificationNumber: src.sustainabilityCert ? `${src.sustainabilityCert}-TR-${2025}-${String(truckCounter).slice(-4)}` : null,
+          certificationExpiry: src.sustainabilityCert ? certExpiry : null,
+          isDedicatedCrop: false,
+          isPrimaryLandDriver: false,
+          carbonContentPercent: src.feedstockType === 'hazelnut_shells' ? 48 : src.feedstockType === 'corn_stover' ? 42 : 46,
         },
       });
       feedstocks.push(delivery);
     }
   }
 
-  console.log(`Created ${feedstocks.length} feedstock deliveries`);
+  const totalFeedstockTonnes = feedstocks.reduce((sum, f) => sum + (f.weightTonnes || 0), 0);
+  console.log(`  ✓ Created ${feedstocks.length} feedstock deliveries (${totalFeedstockTonnes.toFixed(0)} tonnes)\n`);
 
-  console.log('Creating 2025 production batches (daily aggregation)...');
+  // ============================================
+  // PHASE 4: GENERATE PRODUCTION BATCHES WITH LAB TESTS
+  // ============================================
+  console.log('Phase 4: Generating production batches with lab tests...');
 
   // Group feedstocks by date
   const feedstocksByDate = new Map<string, typeof feedstocks>();
@@ -180,30 +388,33 @@ async function main() {
   }
 
   const productionBatches: Awaited<ReturnType<typeof prisma.productionBatch.create>>[] = [];
+  let batchCounter = 1;
 
   for (const [dateKey, dayFeedstocks] of feedstocksByDate) {
     if (dayFeedstocks.length === 0) continue;
 
     const inputWeight = dayFeedstocks.reduce((sum, f) => sum + (f.weightTonnes || 0), 0);
 
-    // Biochar yield varies by feedstock type (25-35%)
-    // Hazelnut shells: ~30%, Wood: ~28%, Corn stover: ~26%
-    const avgYield = dayFeedstocks.reduce((sum, f) => {
+    // Calculate yield by feedstock type
+    let totalYieldWeight = 0;
+    for (const f of dayFeedstocks) {
       const yieldRate = f.feedstockType === 'hazelnut_shells' ? 0.30 :
                         f.feedstockType === 'corn_stover' ? 0.26 : 0.28;
-      return sum + (f.weightTonnes || 0) * yieldRate;
-    }, 0) / inputWeight * 100;
+      totalYieldWeight += (f.weightTonnes || 0) * yieldRate;
+    }
+    const output = Number(totalYieldWeight.toFixed(1));
 
-    const outputYield = avgYield / 100;
-    const output = Number((inputWeight * outputYield).toFixed(1));
-
-    // Temperature varies slightly by feedstock mix
+    // Temperature profile
     const hasHazelnut = dayFeedstocks.some(f => f.feedstockType === 'hazelnut_shells');
     const hasWood = dayFeedstocks.some(f => f.feedstockType?.includes('wood') || f.feedstockType?.includes('logging'));
+    const tempMin = hasWood ? 540 : 520;
+    const tempMax = hasHazelnut ? 660 : 640;
+    const tempAvg = Math.round((tempMin + tempMax) / 2 + (seededRandom(batchCounter) - 0.5) * 30);
 
-    const tempMin = hasWood ? 520 : 500;
-    const tempMax = hasHazelnut ? 680 : 650;
-    const tempAvg = Math.round((tempMin + tempMax) / 2 + (Math.random() - 0.5) * 20);
+    // Quality parameters (PURO methodology)
+    const organicCarbonPercent = 78 + seededRandom(batchCounter * 7) * 4; // 78-82%
+    const hydrogenPercent = 1.8 + seededRandom(batchCounter * 13) * 0.4; // 1.8-2.2%
+    const hCorgRatio = hydrogenPercent / organicCarbonPercent; // ~0.023-0.028
 
     const batch = await prisma.productionBatch.create({
       data: {
@@ -215,7 +426,24 @@ async function main() {
         temperatureAvg: tempAvg,
         status: 'complete',
         wizardStep: 5,
-        notes: `Daily production from ${dayFeedstocks.length} deliveries (${dayFeedstocks.map(f => f.feedstockType).filter((v, i, a) => a.indexOf(v) === i).join(', ')})`,
+        notes: `Batch #${batchCounter} - ${dayFeedstocks.length} deliveries (${dayFeedstocks.map(f => f.feedstockType).filter((v, i, a) => a.indexOf(v) === i).join(', ')})`,
+        facilityId: facility.id,
+        // PURO quality fields
+        organicCarbonPercent: Number(organicCarbonPercent.toFixed(2)),
+        totalCarbonPercent: Number((organicCarbonPercent + 2).toFixed(2)), // C_org + C_inorg
+        inorganicCarbonPercent: 2.0,
+        hydrogenPercent: Number(hydrogenPercent.toFixed(2)),
+        hCorgRatio: Number(hCorgRatio.toFixed(4)),
+        qualityValidationStatus: 'passed', // All pass threshold
+        dryMassTonnes: Number((output * 0.92).toFixed(1)), // 8% moisture
+        moisturePercent: 8,
+        // Direct stack emissions
+        ch4EmissionsKg: Number((output * 0.15).toFixed(1)),
+        n2oEmissionsKg: Number((output * 0.008).toFixed(3)),
+        fossilCO2EmissionsKg: Number((output * 0.5).toFixed(1)),
+        // Allocation (100% to biochar, no co-products)
+        allocationFactorBiochar: 1.0,
+        // Link feedstock allocations
         feedstockDeliveryId: dayFeedstocks[0].id,
         feedstockAllocations: {
           createMany: {
@@ -228,110 +456,92 @@ async function main() {
         },
       },
     });
+
+    // Create lab test for each batch
+    await prisma.biocharLabTest.create({
+      data: {
+        productionBatchId: batch.id,
+        testDate: new Date(dateKey),
+        labName: 'Sakarya Üniversitesi Analitik Kimya Laboratuvarı',
+        labAccreditation: 'ISO/IEC 17025:2017',
+        totalCarbonPercent: Number((organicCarbonPercent + 2).toFixed(2)),
+        inorganicCarbonPercent: 2.0,
+        organicCarbonPercent: Number(organicCarbonPercent.toFixed(2)),
+        hydrogenPercent: Number(hydrogenPercent.toFixed(2)),
+        hCorgRatio: Number(hCorgRatio.toFixed(4)),
+        passesQualityThreshold: true, // H/C_org < 0.7
+        carbonMethod: 'ISO_16948',
+        inorganicCarbonMethod: 'DIN_51726',
+        moistureMethod: 'ISO_589',
+        moisturePercent: 8,
+        nitrogenPercent: 0.8,
+      },
+    });
+
     productionBatches.push(batch);
+    batchCounter++;
   }
 
-  console.log(`Created ${productionBatches.length} production batches`);
-
-  // Calculate totals for reporting
-  const totalFeedstockTonnes = feedstocks.reduce((sum, f) => sum + (f.weightTonnes || 0), 0);
   const totalBiocharTonnes = productionBatches.reduce((sum, b) => sum + (b.outputBiocharWeightTonnes || 0), 0);
+  console.log(`  ✓ Created ${productionBatches.length} production batches (${totalBiocharTonnes.toFixed(0)} tonnes biochar)`);
+  console.log(`  ✓ Created ${productionBatches.length} lab tests\n`);
 
-  console.log('Creating monthly energy usage records...');
+  // ============================================
+  // PHASE 5: GENERATE ENERGY USAGE
+  // ============================================
+  console.log('Phase 5: Generating energy usage records...');
 
-  // Monthly energy records - electricity and diesel for plant operations
   const energyRecords = [];
   for (let m = 0; m < 12; m++) {
     const monthStart = new Date(2025, m, 1);
     const monthEnd = new Date(2025, m + 1, 0);
-    const monthBatches = productionBatches.filter(b => {
-      const batchMonth = b.productionDate.getMonth();
-      return batchMonth === m;
+
+    // Check if month is before seed end date
+    if (monthStart > SEED_END_DATE) break;
+
+    const monthBatches = productionBatches.filter(b => b.productionDate.getMonth() === m);
+    if (monthBatches.length === 0) continue;
+
+    const monthOutput = monthBatches.reduce((sum, b) => sum + (b.outputBiocharWeightTonnes || 0), 0);
+
+    // Electricity (2x scale)
+    energyRecords.push({
+      scope: 'production',
+      energyType: 'electricity',
+      quantity: Math.round(monthOutput * 45 + 1600), // ~45 kWh/t + 1600 base (2x)
+      unit: 'kWh',
+      periodStart: monthStart,
+      periodEnd: monthEnd,
+      productionBatchId: monthBatches[Math.floor(monthBatches.length / 2)].id,
+      notes: `Monthly electricity - pyrolysis, conveyors, exhaust`,
     });
 
-    if (monthBatches.length > 0) {
-      // Electricity for pyrolysis operations
-      const monthOutput = monthBatches.reduce((sum, b) => sum + (b.outputBiocharWeightTonnes || 0), 0);
-      energyRecords.push({
-        scope: 'production',
-        energyType: 'electricity',
-        quantity: Math.round(monthOutput * 45 + 800), // ~45 kWh per tonne + base load
-        unit: 'kWh',
-        periodStart: monthStart,
-        periodEnd: monthEnd,
-        productionBatchId: monthBatches[Math.floor(monthBatches.length / 2)].id,
-        notes: `Monthly electricity - pyrolysis line, conveyors, exhaust system`,
-      });
-
-      // Diesel for on-site equipment
-      energyRecords.push({
-        scope: 'production',
-        energyType: 'diesel',
-        quantity: Math.round(monthOutput * 2.5 + 50), // ~2.5L per tonne + base
-        unit: 'litres',
-        periodStart: monthStart,
-        periodEnd: monthEnd,
-        productionBatchId: monthBatches[0].id,
-        notes: `Monthly diesel - loader, forklift operations`,
-      });
-    }
+    // Diesel (2x scale)
+    energyRecords.push({
+      scope: 'production',
+      energyType: 'diesel',
+      quantity: Math.round(monthOutput * 2.5 + 100), // ~2.5L/t + 100L base (2x)
+      unit: 'litres',
+      periodStart: monthStart,
+      periodEnd: monthEnd,
+      productionBatchId: monthBatches[0].id,
+      notes: `Monthly diesel - loader, forklift, generators`,
+    });
   }
 
   await prisma.energyUsage.createMany({ data: energyRecords });
-  console.log(`Created ${energyRecords.length} energy usage records`);
+  console.log(`  ✓ Created ${energyRecords.length} energy usage records\n`);
 
-  console.log('Creating sequestration events (quarterly batches)...');
+  // ============================================
+  // PHASE 6: GENERATE SEQUESTRATION EVENTS
+  // ============================================
+  console.log('Phase 6: Generating sequestration events...');
 
   const sequestrationEvents: Awaited<ReturnType<typeof prisma.sequestrationEvent.create>>[] = [];
 
-  // Quarterly sequestration events
-  const sequestrationData = [
-    {
-      month: 3, // Q1 end - March
-      type: 'soil' as const,
-      destination: 'Adapazarı Tarım Kooperatifi, Sakarya',
-      destLat: 40.7891,
-      destLng: 30.4025,
-      postcode: '54100',
-      storage: true,
-      storageConditions: 'covered_outdoor' as const,
-    },
-    {
-      month: 6, // Q2 end - June
-      type: 'construction' as const,
-      destination: 'Kocaeli Beton Santrali, Kocaeli',
-      destLat: 40.7656,
-      destLng: 29.9167,
-      postcode: '41400',
-      storage: false,
-      storageConditions: null,
-    },
-    {
-      month: 9, // Q3 end - September
-      type: 'compost' as const,
-      destination: 'Bursa Organik Gübre Tesisi, Bursa',
-      destLat: 40.1833,
-      destLng: 29.0667,
-      postcode: '16200',
-      storage: true,
-      storageConditions: 'indoor' as const,
-    },
-    {
-      month: 12, // Q4 end - December
-      type: 'soil' as const,
-      destination: 'Bilecik Tarım İşletmesi, Bilecik',
-      destLat: 40.0567,
-      destLng: 30.0189,
-      postcode: '11000',
-      storage: true,
-      storageConditions: 'covered_outdoor' as const,
-    },
-  ];
-
-  for (let q = 0; q < sequestrationData.length; q++) {
-    const seqData = sequestrationData[q];
-    const quarterStart = q * 3;
-    const quarterEnd = (q + 1) * 3;
+  for (const dest of SEQUESTRATION_DESTINATIONS) {
+    const quarterStart = (dest.quarter - 1) * 3;
+    const quarterEnd = dest.quarter * 3;
 
     const quarterBatches = productionBatches.filter(b => {
       const month = b.productionDate.getMonth();
@@ -341,28 +551,55 @@ async function main() {
     if (quarterBatches.length === 0) continue;
 
     const quarterOutput = quarterBatches.reduce((sum, b) => sum + (b.outputBiocharWeightTonnes || 0), 0);
-    const storageStart = new Date(2025, seqData.month - 1, 1);
-    const storageEnd = new Date(2025, seqData.month - 1, 20);
-    const deliveryDate = new Date(2025, seqData.month - 1, 25);
+
+    // Q4 delivery date is Dec 13 (seed end date)
+    const deliveryMonth = dest.quarter === 4 ? 11 : dest.quarter * 3 - 1;
+    const deliveryDay = dest.quarter === 4 ? 13 : 25;
+    const deliveryDate = new Date(2025, deliveryMonth, deliveryDay);
+
+    const storageStart = new Date(2025, deliveryMonth, 1);
+    const storageEnd = new Date(2025, deliveryMonth, 20);
+
+    // Mean annual soil temp for Turkey (Marmara region)
+    const meanSoilTempC = 14;
+
+    // Calculate persistence using BC+200 model
+    // PF = exp(-3.89 × H/C_org) × exp(-0.037 × T_soil)
+    const avgHCorg = quarterBatches.reduce((sum, b) => sum + (b.hCorgRatio || 0), 0) / quarterBatches.length;
+    const persistenceFraction = Math.exp(-3.89 * avgHCorg) * Math.exp(-0.037 * meanSoilTempC);
+    const persistencePercent = persistenceFraction * 100;
 
     const seq = await prisma.sequestrationEvent.create({
       data: {
-        storageBeforeDelivery: seqData.storage,
-        storageLocation: seqData.storage ? `Sakarya Biochar Depo ${String.fromCharCode(65 + q)}` : null,
-        storageStartDate: seqData.storage ? storageStart : null,
-        storageEndDate: seqData.storage ? storageEnd : null,
-        storageContainerIds: seqData.storage ? `CONT-${2025}-Q${q + 1}-001,CONT-${2025}-Q${q + 1}-002` : null,
-        storageConditions: seqData.storageConditions,
+        storageBeforeDelivery: dest.storage,
+        storageLocation: dest.storage ? `Sakarya Biochar Depo ${String.fromCharCode(64 + dest.quarter)}` : null,
+        storageStartDate: dest.storage ? storageStart : null,
+        storageEndDate: dest.storage ? storageEnd : null,
+        storageContainerIds: dest.storage ? `CONT-2025-Q${dest.quarter}-001,CONT-2025-Q${dest.quarter}-002,CONT-2025-Q${dest.quarter}-003` : null,
+        storageConditions: dest.storageConditions,
         finalDeliveryDate: deliveryDate,
-        deliveryVehicleDescription: '30t Bulk Hauler',
-        deliveryPostcode: seqData.postcode,
-        destinationLat: seqData.destLat,
-        destinationLng: seqData.destLng,
+        deliveryVehicleDescription: '30t Walking Floor Trailer',
+        deliveryPostcode: dest.postcode,
+        destinationLat: dest.lat,
+        destinationLng: dest.lng,
         geocodeStatus: 'success',
-        sequestrationType: seqData.type,
-        status: 'complete',
-        wizardStep: 6,
-        notes: `Q${q + 1} 2025 biochar sequestration - ${seqData.type} application (${quarterBatches.length} batches, ${quarterOutput.toFixed(1)}t)`,
+        routeStatus: 'pending',
+        routeDistanceKm: dest.distanceKm * 1.15,
+        sequestrationType: dest.type,
+        status: dest.quarter === 4 ? 'draft' : 'complete',
+        wizardStep: dest.quarter === 4 ? 4 : 6,
+        notes: `Q${dest.quarter} 2025 - ${dest.name} (${quarterOutput.toFixed(0)}t biochar)`,
+        // PURO methodology fields
+        endUseCategory: dest.endUseCategory,
+        meanAnnualSoilTempC: dest.type === 'soil' || dest.type === 'compost' ? meanSoilTempC : null,
+        soilTempRegion: 'Marmara Region, Turkey',
+        soilTempDataSource: 'Turkish State Meteorological Service (MGM)',
+        persistenceFractionPercent: Number(persistencePercent.toFixed(2)),
+        incorporationMethod: dest.incorporationMethod,
+        incorporationDepthCm: dest.incorporationDepthCm,
+        expectedProductLifetimeYears: dest.type === 'construction' ? 100 : null,
+        endOfLifeFate: dest.type === 'construction' ? 'LANDFILL' : null,
+        permanenceVerificationMethod: 'DOCUMENTATION',
         batches: {
           create: quarterBatches.map((b) => ({
             productionBatchId: b.id,
@@ -374,152 +611,312 @@ async function main() {
     sequestrationEvents.push(seq);
   }
 
-  console.log(`Created ${sequestrationEvents.length} sequestration events`);
+  console.log(`  ✓ Created ${sequestrationEvents.length} sequestration events\n`);
 
-  console.log('Creating BCUs (Biochar Carbon Units)...');
+  // ============================================
+  // PHASE 7: GENERATE MONITORING PERIODS
+  // ============================================
+  console.log('Phase 7: Generating monitoring periods...');
 
-  // BCUs issued for each sequestration event
-  // CO2e factor: ~3.0 tCO2e per tonne biochar (conservative estimate)
-  const bcuPayloads = sequestrationEvents.map((seq, i) => ({
-    seqIdx: i,
-    // Calculate from sequestration batches
-    quantityTonnesCO2e: Math.round(totalBiocharTonnes / 4 * 3.0), // Quarterly portion * CO2e factor
-    serial: `BCU-2025-${String(i + 1).padStart(3, '0')}-SAK`,
-    status: i === 0 ? 'retired' : i === 1 ? 'transferred' : 'issued',
-  }));
+  const monitoringPeriods: Awaited<ReturnType<typeof prisma.monitoringPeriod.create>>[] = [];
 
-  for (const bcu of bcuPayloads) {
-    await prisma.bCU.create({
+  for (let q = 1; q <= 4; q++) {
+    const periodStart = new Date(2025, (q - 1) * 3, 1);
+    const periodEnd = q === 4 ? SEED_END_DATE : new Date(2025, q * 3, 0);
+
+    const quarterBatches = productionBatches.filter(b => {
+      const month = b.productionDate.getMonth();
+      return month >= (q - 1) * 3 && month < q * 3;
+    });
+
+    if (quarterBatches.length === 0) continue;
+
+    const quarterOutput = quarterBatches.reduce((sum, b) => sum + (b.outputBiocharWeightTonnes || 0), 0);
+    const avgCorg = quarterBatches.reduce((sum, b) => sum + (b.organicCarbonPercent || 80), 0) / quarterBatches.length;
+
+    // CORC calculation (per PURO methodology)
+    // C_stored = biochar_tonnes × C_org% × 3.67 (CO2/C ratio)
+    const cStored = quarterOutput * (avgCorg / 100) * 3.67;
+
+    // Persistence loss (average ~12% based on BC+200)
+    const persistencePercent = 88;
+    const cLoss = cStored * (1 - persistencePercent / 100);
+
+    // C_baseline = 0 for NEW_BUILT facility
+    const cBaseline = 0;
+
+    // E_project (simplified: electricity + diesel + transport)
+    const monthlyEnergy = energyRecords.filter(e => {
+      const month = e.periodStart.getMonth();
+      return month >= (q - 1) * 3 && month < q * 3;
+    });
+    const electricityKWh = monthlyEnergy.filter(e => e.energyType === 'electricity').reduce((sum, e) => sum + e.quantity, 0);
+    const dieselL = monthlyEnergy.filter(e => e.energyType === 'diesel').reduce((sum, e) => sum + e.quantity, 0);
+
+    // Turkey grid: 0.45 kgCO2e/kWh, Diesel: 2.68 kgCO2e/L
+    const eProject = (electricityKWh * 0.45 + dieselL * 2.68) / 1000; // Convert to tCO2e
+
+    // E_leakage (minimal for residue feedstocks)
+    const eLeakage = quarterOutput * 0.02; // ~0.02 tCO2e/t leakage
+
+    // Net CORCs
+    const netCORCs = cStored - cBaseline - cLoss - eProject - eLeakage;
+
+    const period = await prisma.monitoringPeriod.create({
       data: {
-        quantityTonnesCO2e: bcu.quantityTonnesCO2e,
-        issuanceDate: new Date(2025, (bcu.seqIdx + 1) * 3, 15),
-        status: bcu.status as 'issued' | 'retired' | 'transferred',
-        registrySerialNumber: bcu.serial,
-        ownerName: bcu.seqIdx === 0 ? 'Turkish Carbon Fund' :
-                   bcu.seqIdx === 1 ? 'Marmara Green Investments' :
-                   bcu.seqIdx === 2 ? 'Anadolu Carbon Partners' : 'Sakarya Biochar Facility',
-        retirementDate: bcu.status === 'retired' ? new Date(2025, 4, 20) : null,
-        retirementBeneficiary: bcu.status === 'retired' ? 'Industrial Carbon Offset - Sakarya Packaging Ltd' : null,
-        notes: `Q${bcu.seqIdx + 1} 2025 Sakarya biochar production`,
-        sequestrationEvents: {
-          create: { sequestrationId: sequestrationEvents[bcu.seqIdx].id },
+        facilityId: facility.id,
+        periodStart,
+        periodEnd,
+        status: q === 4 ? 'active' : 'verified',
+        cStoredTCO2e: Number(cStored.toFixed(2)),
+        cBaselineTCO2e: cBaseline,
+        cLossTCO2e: Number(cLoss.toFixed(2)),
+        persistenceFractionPercent: persistencePercent,
+        eProjectTCO2e: Number(eProject.toFixed(2)),
+        eLeakageTCO2e: Number(eLeakage.toFixed(2)),
+        netCORCsTCO2e: Number(netCORCs.toFixed(2)),
+        calculatedAt: q === 4 ? null : new Date(2025, q * 3, 10),
+      },
+    });
+    monitoringPeriods.push(period);
+  }
+
+  console.log(`  ✓ Created ${monitoringPeriods.length} monitoring periods\n`);
+
+  // ============================================
+  // PHASE 8: GENERATE CORC ISSUANCES
+  // ============================================
+  console.log('Phase 8: Generating CORC issuances...');
+
+  const corcIssuances: Awaited<ReturnType<typeof prisma.cORCIssuance.create>>[] = [];
+
+  // Only Q1-Q3 have issued CORCs (Q4 still in progress)
+  for (let q = 1; q <= 3; q++) {
+    const period = monitoringPeriods[q - 1];
+    const seqEvent = sequestrationEvents[q - 1];
+
+    const quarterBatches = productionBatches.filter(b => {
+      const month = b.productionDate.getMonth();
+      return month >= (q - 1) * 3 && month < q * 3;
+    });
+
+    const issuanceDate = new Date(2025, q * 3, 15); // Mid-month after quarter end
+
+    // Q1 is retired to Microsoft Turkey
+    const isRetired = q === 1;
+
+    const corc = await prisma.cORCIssuance.create({
+      data: {
+        monitoringPeriodId: period.id,
+        serialNumber: `CORC-SAK-2025-Q${q}-001`,
+        permanenceType: 'BC200+',
+        // Full calculation breakdown
+        cStoredTCO2e: period.cStoredTCO2e,
+        cBaselineTCO2e: period.cBaselineTCO2e,
+        cLossTCO2e: period.cLossTCO2e,
+        persistenceFractionPercent: period.persistenceFractionPercent,
+        eProjectTCO2e: period.eProjectTCO2e,
+        eLeakageTCO2e: period.eLeakageTCO2e,
+        netCORCsTCO2e: period.netCORCsTCO2e,
+        status: isRetired ? 'retired' : 'issued',
+        issuanceDate,
+        ownerName: isRetired ? 'Microsoft Turkey' : 'Sakarya Biochar Facility',
+        ownerAccountId: isRetired ? 'MSFT-TR-2025' : 'SAK-BIO-2025',
+        retirementDate: isRetired ? new Date(2025, 4, 25) : null,
+        retirementBeneficiary: isRetired ? 'Microsoft Turkey Climate Commitment' : null,
+        retirementPurpose: isRetired ? 'Corporate carbon neutrality goal 2030' : null,
+        notes: `Q${q} 2025 - ${quarterBatches.length} batches, ${sequestrationEvents[q-1]?.sequestrationType} application`,
+        // Link to production batches
+        productionBatches: {
+          create: quarterBatches.map(b => ({ productionBatchId: b.id })),
         },
+        // Link to sequestration event
+        sequestrationEvents: {
+          create: seqEvent ? [{ sequestrationId: seqEvent.id }] : [],
+        },
+      },
+    });
+    corcIssuances.push(corc);
+  }
+
+  const totalCORCs = corcIssuances.reduce((sum, c) => sum + (c.netCORCsTCO2e || 0), 0);
+  console.log(`  ✓ Created ${corcIssuances.length} CORC issuances (${totalCORCs.toFixed(0)} tCO2e total)`);
+  console.log(`    - Q1: RETIRED to Microsoft Turkey`);
+  console.log(`    - Q2-Q3: ISSUED (available)\n`);
+
+  // ============================================
+  // PHASE 9: GENERATE LEAKAGE ASSESSMENTS
+  // ============================================
+  console.log('Phase 9: Generating leakage assessments...');
+
+  for (let q = 1; q <= 4; q++) {
+    const assessmentDate = new Date(2025, q * 3 - 1, 20); // Late in quarter
+    if (assessmentDate > SEED_END_DATE) break;
+
+    const quarterBatches = productionBatches.filter(b => {
+      const month = b.productionDate.getMonth();
+      return month >= (q - 1) * 3 && month < q * 3;
+    });
+    const quarterOutput = quarterBatches.reduce((sum, b) => sum + (b.outputBiocharWeightTonnes || 0), 0);
+
+    await prisma.leakageAssessment.create({
+      data: {
+        facilityId: facility.id,
+        monitoringPeriodId: monitoringPeriods[q - 1]?.id,
+        assessmentDate,
+        assessorName: 'Dr. Mehmet Yılmaz',
+        // Ecological leakage - Facility (Section 8.2.1)
+        facilityEcologicalStatus: 'NOT_APPLICABLE',
+        facilityEcologicalKgCO2e: 0,
+        facilityEcologicalNotes: 'Facility located in existing industrial zone (OSB), no ecological displacement',
+        // Ecological leakage - Biomass (Section 8.2.2)
+        biomassEcologicalStatus: 'MITIGATED',
+        biomassEcologicalKgCO2e: 0,
+        biomassEcologicalNotes: 'All feedstocks are residues/wastes with FSC/PEFC certification',
+        // Market leakage - AFOLU (Section 8.2.3)
+        afoluLeakageStatus: 'NOT_APPLICABLE',
+        afoluLeakageKgCO2e: 0,
+        afoluNotes: 'No dedicated crops, all agricultural/forestry residues',
+        // Market leakage - Energy/Materials (Section 8.2.4-6)
+        energyMaterialLeakageStatus: 'QUANTIFIED',
+        energyMaterialLeakageKgCO2e: Math.round(quarterOutput * 15), // ~15 kgCO2e/t
+        energyMaterialNotes: 'Minor displacement of alternative biomass uses (mulching)',
+        // iLUC contribution (Section 8.3.4)
+        ilucContributionKgCO2e: 0, // Low risk feedstocks
+        // Total
+        totalLeakageKgCO2e: Math.round(quarterOutput * 15),
+        notes: `Q${q} 2025 leakage assessment - all feedstocks LOW iLUC risk`,
       },
     });
   }
 
-  console.log(`Created ${bcuPayloads.length} BCUs`);
+  console.log(`  ✓ Created 4 leakage assessments\n`);
 
-  console.log('Creating transport events for sequestration deliveries...');
+  // ============================================
+  // PHASE 10: GENERATE TRANSPORT EVENTS
+  // ============================================
+  console.log('Phase 10: Generating transport events...');
 
   const transportEvents = sequestrationEvents.map((seq, i) => ({
     date: seq.finalDeliveryDate!,
-    vehicleId: `34 SAK ${800 + i}`,
+    vehicleId: `34 SAK ${8000 + i}`,
     vehicleDescription: '30t Walking Floor Trailer',
-    originAddress: 'Soğucak OSB, Sanayi Cd. No:94, 54160 Söğütlü/Sakarya, Türkiye',
-    originLat: 40.892533,
-    originLng: 30.516827,
-    destinationAddress: sequestrationData[i].destination,
+    originAddress: PLANT.address,
+    originLat: PLANT.lat,
+    originLng: PLANT.lng,
+    destinationAddress: SEQUESTRATION_DESTINATIONS[i].address,
     destinationLat: seq.destinationLat!,
     destinationLng: seq.destinationLng!,
-    distanceKm: Math.round(50 + i * 30 + Math.random() * 20),
+    distanceKm: SEQUESTRATION_DESTINATIONS[i].distanceKm,
     fuelType: 'diesel',
-    fuelAmount: Math.round(80 + i * 25),
-    cargoDescription: `Biochar delivery for ${seq.sequestrationType} application - Q${i + 1} 2025`,
+    fuelUnit: 'liters',
+    fuelAmount: Math.round(SEQUESTRATION_DESTINATIONS[i].distanceKm * 0.4 + 20),
+    cargoDescription: `Q${i + 1} 2025 biochar delivery - ${seq.sequestrationType} application`,
     sequestrationEventId: seq.id,
   }));
 
   await prisma.transportEvent.createMany({ data: transportEvents });
-  console.log(`Created ${transportEvents.length} transport events`);
+  console.log(`  ✓ Created ${transportEvents.length} transport events\n`);
 
-  console.log('Creating evidence files...');
+  // ============================================
+  // PHASE 11: GENERATE EVIDENCE FILES
+  // ============================================
+  console.log('Phase 11: Generating evidence files...');
 
-  const evidenceFiles = [
-    // Feedstock certificates
-    {
-      fileName: '2025_hazelnut_sustainability_cert.pdf',
-      fileType: 'pdf',
-      fileSize: 240000,
-      mimeType: 'application/pdf',
-      storagePath: '/evidence/feedstock/2025_hazelnut_cert.pdf',
-      category: 'sustainability',
-      feedstockDeliveryId: feedstocks[0].id,
-    },
-    {
-      fileName: '2025_forestry_stewardship_cert.pdf',
-      fileType: 'pdf',
-      fileSize: 285000,
-      mimeType: 'application/pdf',
-      storagePath: '/evidence/feedstock/2025_forestry_cert.pdf',
-      category: 'sustainability',
-      feedstockDeliveryId: feedstocks.find(f => f.feedstockType === 'wood_chips')?.id || feedstocks[1].id,
-    },
-    // Production evidence
-    {
-      fileName: 'jan_2025_production_weight_ticket.jpg',
-      fileType: 'image',
-      fileSize: 820000,
-      mimeType: 'image/jpeg',
-      storagePath: '/evidence/production/jan_weight.jpg',
-      category: 'weight_in',
-      productionBatchId: productionBatches[0].id,
-    },
-    {
-      fileName: 'jan_2025_temperature_log.csv',
-      fileType: 'csv',
-      fileSize: 52000,
-      mimeType: 'text/csv',
-      storagePath: '/evidence/production/jan_temp.csv',
-      category: 'temperature_log',
-      productionBatchId: productionBatches[0].id,
-    },
-    {
-      fileName: 'q1_biochar_output_cert.pdf',
+  const evidenceFiles = [];
+
+  // Sustainability certificates for each source type
+  for (const src of FEEDSTOCK_SOURCES) {
+    if (src.sustainabilityCert) {
+      const feedstock = feedstocks.find(f => f.feedstockType === src.feedstockType);
+      if (feedstock) {
+        evidenceFiles.push({
+          fileName: `${src.sustainabilityCert}_certificate_${src.name.replace(/\s+/g, '_')}.pdf`,
+          fileType: 'pdf',
+          fileSize: 245000,
+          mimeType: 'application/pdf',
+          storagePath: `/evidence/feedstock/${src.sustainabilityCert.toLowerCase()}_${src.feedstockType}.pdf`,
+          category: 'sustainability',
+          feedstockDeliveryId: feedstock.id,
+        });
+      }
+    }
+  }
+
+  // Monthly lab reports
+  for (let m = 0; m < 12; m++) {
+    if (new Date(2025, m, 1) > SEED_END_DATE) break;
+    const monthBatches = productionBatches.filter(b => b.productionDate.getMonth() === m);
+    if (monthBatches.length > 0) {
+      evidenceFiles.push({
+        fileName: `lab_report_${2025}_${String(m + 1).padStart(2, '0')}.pdf`,
+        fileType: 'pdf',
+        fileSize: 520000,
+        mimeType: 'application/pdf',
+        storagePath: `/evidence/lab/${2025}_${String(m + 1).padStart(2, '0')}_lab_report.pdf`,
+        category: 'lab_report',
+        productionBatchId: monthBatches[Math.floor(monthBatches.length / 2)].id,
+      });
+    }
+  }
+
+  // Quarterly sequestration delivery notes
+  for (let q = 0; q < sequestrationEvents.length; q++) {
+    evidenceFiles.push({
+      fileName: `delivery_note_Q${q + 1}_2025.pdf`,
       fileType: 'pdf',
       fileSize: 180000,
       mimeType: 'application/pdf',
-      storagePath: '/evidence/production/q1_output.pdf',
-      category: 'biochar_out',
-      productionBatchId: productionBatches[30].id,
-    },
-    // Sequestration evidence
-    {
-      fileName: 'q1_delivery_note_soil.pdf',
-      fileType: 'pdf',
-      fileSize: 156000,
-      mimeType: 'application/pdf',
-      storagePath: '/evidence/sequestration/q1_delivery.pdf',
+      storagePath: `/evidence/sequestration/Q${q + 1}_2025_delivery.pdf`,
       category: 'delivery',
-      sequestrationEventId: sequestrationEvents[0]?.id,
-    },
-    {
-      fileName: 'q2_construction_application_cert.pdf',
+      sequestrationEventId: sequestrationEvents[q].id,
+    });
+  }
+
+  // CORC issuance certificates
+  for (let q = 0; q < corcIssuances.length; q++) {
+    evidenceFiles.push({
+      fileName: `CORC_certificate_Q${q + 1}_2025.pdf`,
       fileType: 'pdf',
-      fileSize: 198000,
+      fileSize: 320000,
       mimeType: 'application/pdf',
-      storagePath: '/evidence/sequestration/q2_construction.pdf',
+      storagePath: `/evidence/corc/CORC_Q${q + 1}_2025.pdf`,
       category: 'regulatory',
-      sequestrationEventId: sequestrationEvents[1]?.id,
-    },
-  ];
+      corcId: corcIssuances[q].id,
+    });
+  }
 
-  await prisma.evidenceFile.createMany({
-    data: evidenceFiles.filter(e => e.feedstockDeliveryId || e.productionBatchId || e.sequestrationEventId)
-  });
+  await prisma.evidenceFile.createMany({ data: evidenceFiles });
+  console.log(`  ✓ Created ${evidenceFiles.length} evidence files\n`);
 
-  console.log('\n========================================');
-  console.log('Seed completed successfully!');
+  // ============================================
+  // SUMMARY
+  // ============================================
   console.log('========================================');
-  console.log('Summary:');
-  console.log(`  Feedstock deliveries: ${feedstocks.length}`);
-  console.log(`  Total feedstock: ${totalFeedstockTonnes.toFixed(1)} tonnes`);
-  console.log(`  Production batches: ${productionBatches.length}`);
-  console.log(`  Total biochar output: ${totalBiocharTonnes.toFixed(1)} tonnes`);
-  console.log(`  Average yield: ${(totalBiocharTonnes / totalFeedstockTonnes * 100).toFixed(1)}%`);
-  console.log(`  Sequestration events: ${sequestrationEvents.length}`);
-  console.log(`  BCUs issued: ${bcuPayloads.length}`);
-  console.log(`  Energy records: ${energyRecords.length}`);
-  console.log(`  Transport events: ${transportEvents.length}`);
+  console.log('🎉 SEED COMPLETED SUCCESSFULLY!');
+  console.log('========================================');
+  console.log('');
+  console.log('📊 Summary (2x SCALE):');
+  console.log(`   Feedstock deliveries: ${feedstocks.length.toLocaleString()}`);
+  console.log(`   Total feedstock: ${totalFeedstockTonnes.toLocaleString()} tonnes`);
+  console.log(`   Production batches: ${productionBatches.length}`);
+  console.log(`   Total biochar: ${totalBiocharTonnes.toLocaleString()} tonnes`);
+  console.log(`   Average yield: ${(totalBiocharTonnes / totalFeedstockTonnes * 100).toFixed(1)}%`);
+  console.log(`   Lab tests: ${productionBatches.length}`);
+  console.log(`   Energy records: ${energyRecords.length}`);
+  console.log(`   Sequestration events: ${sequestrationEvents.length}`);
+  console.log(`   Monitoring periods: ${monitoringPeriods.length}`);
+  console.log(`   CORC issuances: ${corcIssuances.length}`);
+  console.log(`   Total CORCs: ${totalCORCs.toLocaleString()} tCO2e`);
+  console.log(`   Leakage assessments: 4`);
+  console.log(`   Transport events: ${transportEvents.length}`);
+  console.log(`   Evidence files: ${evidenceFiles.length}`);
+  console.log('');
+  console.log('💰 CORC Status:');
+  console.log('   Q1: RETIRED to Microsoft Turkey (3,744 tCO2e)');
+  console.log('   Q2: ISSUED (available)');
+  console.log('   Q3: ISSUED (available)');
+  console.log('   Q4: DRAFT (in progress)');
   console.log('========================================\n');
 
   // Feedstock breakdown
@@ -531,15 +928,16 @@ async function main() {
     return acc;
   }, {} as Record<string, { count: number; tonnes: number }>);
 
-  console.log('Feedstock breakdown:');
+  console.log('🌿 Feedstock breakdown:');
   for (const [type, data] of Object.entries(feedstockByType)) {
-    console.log(`  ${type}: ${data.count} deliveries, ${data.tonnes.toFixed(1)} tonnes (${(data.tonnes / totalFeedstockTonnes * 100).toFixed(1)}%)`);
+    console.log(`   ${type}: ${data.count} deliveries, ${data.tonnes.toFixed(0)} tonnes (${(data.tonnes / totalFeedstockTonnes * 100).toFixed(1)}%)`);
   }
+  console.log('');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

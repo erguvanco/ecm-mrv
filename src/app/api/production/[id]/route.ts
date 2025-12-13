@@ -171,6 +171,19 @@ export async function DELETE(
   try {
     const { id } = await params;
 
+    // Check if record exists before attempting delete
+    const existing = await db.productionBatch.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Production batch not found' },
+        { status: 404 }
+      );
+    }
+
     await db.productionBatch.delete({
       where: { id },
     });

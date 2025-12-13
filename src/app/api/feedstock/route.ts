@@ -2,11 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { createFeedstockDeliverySchema } from '@/lib/validations/feedstock';
 import { calculateFeedstockRoute } from '@/lib/services/routing';
+import { mapFeedstockToPuroCategory, PURO_BIOMASS_CATEGORIES } from '@/lib/validations/puro-categories';
+import {
+  parsePaginationParams,
+  calculateSkip,
+  createPaginatedResponse,
+  serverErrorResponse,
+  validationErrorResponse,
+} from '@/lib/api-utils';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const pagination = parsePaginationParams(searchParams);
+
+    // Get total count for pagination
+    const total = await db.feedstockDelivery.count();
+
+    // Fetch paginated data
     const feedstocks = await db.feedstockDelivery.findMany({
       orderBy: { date: 'desc' },
+      skip: calculateSkip(pagination.page, pagination.limit),
+      take: pagination.limit,
       include: {
         evidence: true,
         _count: {
@@ -18,13 +35,24 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(feedstocks);
+    // Add Puro category info to each feedstock
+    const feedstocksWithPuro = feedstocks.map(f => {
+      const puroCategory = f.puroCategory || mapFeedstockToPuroCategory(f.feedstockType);
+      const puroCategoryInfo = puroCategory
+        ? PURO_BIOMASS_CATEGORIES.find(c => c.code === puroCategory)
+        : null;
+
+      return {
+        ...f,
+        puroCategory,
+        puroCategoryInfo,
+      };
+    });
+
+    return NextResponse.json(createPaginatedResponse(feedstocksWithPuro, total, pagination));
   } catch (error) {
     console.error('Error fetching feedstocks:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch feedstock deliveries' },
-      { status: 500 }
-    );
+    return serverErrorResponse('Failed to fetch feedstock deliveries');
   }
 }
 
@@ -34,15 +62,20 @@ export async function POST(request: NextRequest) {
     const result = createFeedstockDeliverySchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', issues: result.error.issues },
-        { status: 400 }
-      );
+      return validationErrorResponse(result.error.issues);
     }
+
+    // Auto-map Puro category from feedstock type if not provided
+    const puroCategory = body.puroCategory || mapFeedstockToPuroCategory(result.data.feedstockType);
+    const puroCategoryInfo = puroCategory
+      ? PURO_BIOMASS_CATEGORIES.find(c => c.code === puroCategory)
+      : null;
 
     const feedstock = await db.feedstockDelivery.create({
       data: {
         ...result.data,
+        puroCategory,
+        puroCategoryName: puroCategoryInfo?.name || null,
         routeStatus: result.data.sourceLat && result.data.sourceLng ? 'pending' : null,
       },
       include: {
@@ -60,9 +93,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(feedstock, { status: 201 });
   } catch (error) {
     console.error('Error creating feedstock:', error);
-    return NextResponse.json(
-      { error: 'Failed to create feedstock delivery' },
-      { status: 500 }
-    );
+    return serverErrorResponse('Failed to create feedstock delivery');
   }
 }

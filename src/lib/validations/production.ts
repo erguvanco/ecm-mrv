@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+// PURO METHODOLOGY: Quality validation status
+export const QUALITY_VALIDATION_STATUS = [
+  { value: 'pending', label: 'Pending', description: 'Awaiting quality validation' },
+  { value: 'passed', label: 'Passed', description: 'H/C_org ratio ≤ 0.7' },
+  { value: 'failed', label: 'Failed', description: 'H/C_org ratio > 0.7' },
+] as const;
+
+// PURO METHODOLOGY: H/C_org ratio threshold
+export const HCORG_RATIO_THRESHOLD = 0.7;
+
 // Schema for feedstock allocation (percentage of a delivery used in a batch)
 export const feedstockAllocationSchema = z.object({
   feedstockDeliveryId: z.string().uuid(),
@@ -19,6 +29,32 @@ export const productionBatchSchema = z.object({
   status: z.enum(['draft', 'complete']).default('draft'),
   wizardStep: z.number().int().min(1).max(5).default(1),
   notes: z.string().optional().nullable(),
+
+  // PURO METHODOLOGY: Facility link
+  facilityId: z.string().uuid().optional().nullable(),
+
+  // PURO METHODOLOGY: Biochar quality parameters (Section 6.1, Equation 6.5)
+  organicCarbonPercent: z.coerce.number().min(0).max(100, 'Must be 0-100%').optional().nullable(),
+  totalCarbonPercent: z.coerce.number().min(0).max(100, 'Must be 0-100%').optional().nullable(),
+  inorganicCarbonPercent: z.coerce.number().min(0).max(100, 'Must be 0-100%').optional().nullable(),
+  hydrogenPercent: z.coerce.number().min(0).max(100, 'Must be 0-100%').optional().nullable(),
+  hCorgRatio: z.coerce.number().min(0).max(2, 'H/C_org ratio typically 0-2').optional().nullable(),
+  qualityValidationStatus: z.enum(['pending', 'passed', 'failed']).default('pending'),
+
+  // PURO METHODOLOGY: Dry mass (for accurate CORC calculation)
+  dryMassTonnes: z.coerce.number().positive('Dry mass must be positive').optional().nullable(),
+  moisturePercent: z.coerce.number().min(0).max(100, 'Must be 0-100%').optional().nullable(),
+
+  // PURO METHODOLOGY: Direct stack emissions (Section 3.5)
+  ch4EmissionsKg: z.coerce.number().nonnegative('Emissions cannot be negative').optional().nullable(),
+  n2oEmissionsKg: z.coerce.number().nonnegative('Emissions cannot be negative').optional().nullable(),
+  fossilCO2EmissionsKg: z.coerce.number().nonnegative('Emissions cannot be negative').optional().nullable(),
+
+  // PURO METHODOLOGY: Co-product allocation (Section 7.5)
+  coProductHeatMJ: z.coerce.number().nonnegative('Energy cannot be negative').optional().nullable(),
+  coProductElectricityKWh: z.coerce.number().nonnegative('Energy cannot be negative').optional().nullable(),
+  coProductOilLitres: z.coerce.number().nonnegative('Volume cannot be negative').optional().nullable(),
+  allocationFactorBiochar: z.coerce.number().min(0, 'Factor must be 0-1').max(1, 'Factor must be 0-1').default(1.0),
 });
 
 export const createProductionBatchSchema = productionBatchSchema.omit({ id: true });

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Menu } from 'lucide-react';
 import { Sidebar } from './sidebar';
 import { Button } from '@/components/ui/button';
+import { ChatbotWindow } from '@/components/chatbot';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
@@ -45,6 +46,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {children}
         </main>
       </div>
+      {/* AI Chatbot Assistant */}
+      <ChatbotWindow />
     </div>
   );
 }

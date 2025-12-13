@@ -53,6 +53,19 @@ export default async function EditFeedstockPage({
           sourceAddress: feedstock.sourceAddress || '',
           sourceLat: feedstock.sourceLat || 0,
           sourceLng: feedstock.sourceLng || 0,
+          // Puro methodology fields
+          puroCategory: feedstock.puroCategory || undefined,
+          puroCategoryName: feedstock.puroCategoryName || undefined,
+          ilucRiskLevel: (feedstock.ilucRiskLevel as 'LOW' | 'HIGH' | null) || undefined,
+          sourceClassification: (feedstock.sourceClassification as 'RESIDUE' | 'WASTE' | 'DEDICATED_CROP' | null) || undefined,
+          sustainabilityCertification: feedstock.sustainabilityCertification || undefined,
+          certificationNumber: feedstock.certificationNumber || undefined,
+          certificationExpiry: feedstock.certificationExpiry || undefined,
+          isDedicatedCrop: feedstock.isDedicatedCrop ?? false,
+          isPrimaryLandDriver: feedstock.isPrimaryLandDriver ?? false,
+          firstGatheringPointAddress: feedstock.firstGatheringPointAddress || undefined,
+          firstGatheringPointLat: feedstock.firstGatheringPointLat || undefined,
+          firstGatheringPointLng: feedstock.firstGatheringPointLng || undefined,
         }}
       />
     </PageContainer>

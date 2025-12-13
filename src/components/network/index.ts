@@ -3,3 +3,4 @@
 export { PlantSettingsDialog } from './plant-settings-dialog';
 export { AddressSearch } from './address-search';
 export { MapTimeFilter } from './map-time-filter';
+export { NetworkTimeline } from './network-timeline';

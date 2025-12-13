@@ -83,6 +83,19 @@ export async function DELETE(
   try {
     const { id } = await params;
 
+    // Check if record exists before attempting delete
+    const existing = await db.transportEvent.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Transport event not found' },
+        { status: 404 }
+      );
+    }
+
     await db.transportEvent.delete({
       where: { id },
     });

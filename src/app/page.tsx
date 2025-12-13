@@ -15,9 +15,11 @@ import {
   Activity,
   TrendingUp,
   ChevronRight,
-  Layers,
   Database,
   MapPin,
+  Building2,
+  Calendar,
+  Calculator,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +28,7 @@ import type { OnboardingStep } from '@/components/ui';
 import { DashboardChart, TimeFilter } from '@/components/dashboard';
 import { getDateRange, type TimeRange } from '@/lib/utils/date-range';
 import { DashboardMapWrapper } from '@/components/dashboard/dashboard-map-wrapper';
+import { CORCJourneyProgress, type CORCJourneyStage } from '@/components/corc';
 import db from '@/lib/db';
 import { Suspense } from 'react';
 
@@ -41,9 +44,12 @@ async function getStats(range: TimeRange) {
     transportCount,
     sequestrationCount,
     sequestrationCompleteCount,
-    bcuCount,
-    bcuRetiredCount,
-    bcuTransferredCount,
+    corcCount,
+    corcIssuedCount,
+    corcRetiredCount,
+    monitoringPeriodCount,
+    activeMonitoringPeriod,
+    facility,
   ] = await Promise.all([
     db.feedstockDelivery.count({ where: dateFilter ? { date: dateFilter } : undefined }),
     db.productionBatch.count({ where: dateFilter ? { productionDate: dateFilter } : undefined }),
@@ -52,9 +58,12 @@ async function getStats(range: TimeRange) {
     db.transportEvent.count({ where: dateFilter ? { date: dateFilter } : undefined }),
     db.sequestrationEvent.count({ where: dateFilter ? { finalDeliveryDate: dateFilter } : undefined }),
     db.sequestrationEvent.count({ where: { status: 'complete', ...(dateFilter ? { finalDeliveryDate: dateFilter } : {}) } }),
-    db.bCU.count({ where: dateFilter ? { issuanceDate: dateFilter } : undefined }),
-    db.bCU.count({ where: { status: 'retired', ...(dateFilter ? { issuanceDate: dateFilter } : {}) } }),
-    db.bCU.count({ where: { status: 'transferred', ...(dateFilter ? { issuanceDate: dateFilter } : {}) } }),
+    db.cORCIssuance.count({ where: dateFilter ? { createdAt: dateFilter } : undefined }),
+    db.cORCIssuance.count({ where: { status: 'issued', ...(dateFilter ? { createdAt: dateFilter } : {}) } }),
+    db.cORCIssuance.count({ where: { status: 'retired', ...(dateFilter ? { createdAt: dateFilter } : {}) } }),
+    db.monitoringPeriod.count({ where: dateFilter ? { periodStart: dateFilter } : undefined }),
+    db.monitoringPeriod.findFirst({ where: { status: 'active' }, select: { id: true, periodStart: true, periodEnd: true } }),
+    db.facility.findFirst({ select: { id: true, name: true } }),
   ]);
 
   // Calculate total feedstock weight
@@ -112,11 +121,17 @@ async function getStats(range: TimeRange) {
     0
   );
 
-  // Calculate estimated CO2e removed (simplified: 2.5 tCO2e per tonne biochar)
-  const estimatedCO2e = totalSequestered * 2.5;
+  // Calculate total CORCs issued (tCO2e)
+  const corcIssuances = await db.cORCIssuance.findMany({
+    where: dateFilter ? { createdAt: dateFilter } : undefined,
+    select: { netCORCsTCO2e: true, status: true },
+  });
+  const totalCORCsIssued = corcIssuances
+    .filter(c => c.status === 'issued' || c.status === 'retired')
+    .reduce((sum, c) => sum + c.netCORCsTCO2e, 0);
 
   // Get recent activity (filtered by date range)
-  const [recentFeedstock, recentProduction, recentSequestration, recentBCU] = await Promise.all([
+  const [recentFeedstock, recentProduction, recentSequestration, recentCORC] = await Promise.all([
     db.feedstockDelivery.findMany({
       take: 3,
       where: dateFilter ? { date: dateFilter } : undefined,
@@ -135,11 +150,11 @@ async function getStats(range: TimeRange) {
       orderBy: { createdAt: 'desc' },
       select: { id: true, sequestrationType: true, status: true, createdAt: true },
     }),
-    db.bCU.findMany({
+    db.cORCIssuance.findMany({
       take: 3,
-      where: dateFilter ? { issuanceDate: dateFilter } : undefined,
-      orderBy: { issuanceDate: 'desc' },
-      select: { id: true, registrySerialNumber: true, quantityTonnesCO2e: true, status: true, issuanceDate: true },
+      where: dateFilter ? { createdAt: dateFilter } : undefined,
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, serialNumber: true, netCORCsTCO2e: true, status: true, createdAt: true },
     }),
   ]);
 
@@ -151,19 +166,22 @@ async function getStats(range: TimeRange) {
     transportCount,
     sequestrationCount,
     sequestrationCompleteCount,
-    bcuCount,
-    bcuRetiredCount,
-    bcuTransferredCount,
+    corcCount,
+    corcIssuedCount,
+    corcRetiredCount,
+    monitoringPeriodCount,
+    activeMonitoringPeriod,
+    facility,
     totalFeedstock,
     totalBiochar,
     totalSequestered,
     totalEnergy,
     totalDistance,
-    estimatedCO2e,
+    totalCORCsIssued,
     recentFeedstock,
     recentProduction,
     recentSequestration,
-    recentBCU,
+    recentCORC,
   };
 }
 
@@ -188,10 +206,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   // Onboarding steps
   const onboardingSteps: OnboardingStep[] = [
+    { label: 'Set up facility', href: '/facility', completed: stats.monitoringPeriodCount > 0 },
     { label: 'Add feedstock delivery', href: '/feedstock/new', completed: stats.feedstockCount > 0 },
     { label: 'Create production batch', href: '/production/new', completed: stats.productionCompleteCount > 0 },
     { label: 'Record sequestration event', href: '/sequestration/new', completed: stats.sequestrationCompleteCount > 0 },
-    { label: 'Issue BCU', href: '/registry/issue', completed: stats.bcuCount > 0 },
+    { label: 'Calculate CORCs', href: '/monitoring', completed: stats.corcIssuedCount > 0 },
   ];
 
   const getStatusVariant = (status: string) => {
@@ -241,14 +260,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       iconColor: 'text-violet-500',
       iconBg: 'bg-violet-500/10',
     })),
-    ...stats.recentBCU.map(item => ({
-      type: 'bcu' as const,
+    ...stats.recentCORC.map(item => ({
+      type: 'corc' as const,
       id: item.id,
-      title: item.registrySerialNumber,
-      subtitle: `${item.quantityTonnesCO2e.toFixed(1)} tCO₂e`,
+      title: item.serialNumber,
+      subtitle: `${item.netCORCsTCO2e.toFixed(1)} tCO₂e`,
       status: item.status,
-      createdAt: item.issuanceDate,
-      href: `/registry/${item.id}`,
+      createdAt: item.createdAt,
+      href: `/corc/${item.id}`,
       icon: Award,
       iconColor: 'text-amber-500',
       iconBg: 'bg-amber-500/10',
@@ -280,10 +299,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 Production
               </Button>
             </Link>
-            <Link href="/registry/issue">
+            <Link href="/monitoring">
               <Button size="sm" className="h-8">
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Issue BCU
+                <Calculator className="h-3.5 w-3.5 mr-1.5" />
+                Calculate CORCs
               </Button>
             </Link>
           </div>
@@ -299,26 +318,105 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         />
       )}
 
+      {/* CORC Journey Progress - Show for users with some data */}
+      {!isNewUser && (
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider flex items-center gap-1.5">
+                <TreePine className="h-3.5 w-3.5" />
+                CORC Journey
+              </CardTitle>
+              <span className="text-xs text-[var(--muted-foreground)]">
+                {[
+                  stats.facility !== null,
+                  stats.feedstockCount > 0,
+                  stats.productionCompleteCount > 0,
+                  stats.sequestrationCompleteCount > 0,
+                  stats.monitoringPeriodCount > 0,
+                  stats.corcIssuedCount > 0,
+                ].filter(Boolean).length}/6 stages complete
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <CORCJourneyProgress
+              stages={[
+                {
+                  id: 'facility',
+                  label: 'Facility',
+                  iconName: 'Building2',
+                  completed: stats.facility !== null,
+                  href: '/facility',
+                },
+                {
+                  id: 'feedstock',
+                  label: 'Feedstock',
+                  iconName: 'Leaf',
+                  completed: stats.feedstockCount > 0,
+                  count: stats.feedstockCount,
+                  href: '/feedstock',
+                },
+                {
+                  id: 'production',
+                  label: 'Production',
+                  iconName: 'Factory',
+                  completed: stats.productionCompleteCount > 0,
+                  count: stats.productionCompleteCount,
+                  href: '/production',
+                },
+                {
+                  id: 'sequestration',
+                  label: 'Sequestration',
+                  iconName: 'ArrowDownToLine',
+                  completed: stats.sequestrationCompleteCount > 0,
+                  count: stats.sequestrationCompleteCount,
+                  href: '/sequestration',
+                },
+                {
+                  id: 'monitoring',
+                  label: 'Monitoring',
+                  iconName: 'Calendar',
+                  completed: stats.monitoringPeriodCount > 0,
+                  count: stats.monitoringPeriodCount,
+                  href: stats.activeMonitoringPeriod
+                    ? `/monitoring/${stats.activeMonitoringPeriod.id}`
+                    : '/monitoring',
+                },
+                {
+                  id: 'corc',
+                  label: 'CORC',
+                  iconName: 'Award',
+                  completed: stats.corcIssuedCount > 0,
+                  count: stats.corcIssuedCount,
+                  href: '/corc',
+                },
+              ]}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Hero Metrics Row */}
       <div className="grid gap-3 md:grid-cols-3">
-        {/* CO2 Impact - Hero Card */}
+        {/* CORC Impact - Hero Card */}
         <Card className="md:col-span-1 bg-gradient-to-br from-emerald-500/5 via-emerald-500/10 to-teal-500/5 border-emerald-500/20">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Carbon Removed</p>
-                <p className="text-3xl font-bold mt-1 tracking-tight">{stats.estimatedCO2e.toFixed(1)}</p>
-                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">tonnes CO₂e sequestered</p>
+                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">CORCs Issued</p>
+                <p className="text-3xl font-bold mt-1 tracking-tight">{stats.totalCORCsIssued.toFixed(1)}</p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">tonnes CO₂e certified</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                <TreePine className="h-5 w-5 text-emerald-500" />
+                <Award className="h-5 w-5 text-emerald-500" />
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-emerald-500/20">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[var(--muted-foreground)]">From {stats.totalSequestered.toFixed(1)}t biochar</span>
-                <Link href="/lca" className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5">
-                  View LCA <ChevronRight className="h-3 w-3" />
+                <span className="text-[var(--muted-foreground)]">{stats.corcIssuedCount} issued · {stats.corcRetiredCount} retired</span>
+                <Link href="/corc" className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5">
+                  View CORCs <ChevronRight className="h-3 w-3" />
                 </Link>
               </div>
             </div>
@@ -353,24 +451,29 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </CardContent>
         </Card>
 
-        {/* BCU Stats */}
+        {/* Monitoring Period Stats */}
         <Card className="md:col-span-1">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-[var(--muted-foreground)]">Carbon Credits</p>
-                <p className="text-3xl font-bold mt-1 tracking-tight">{stats.bcuCount}</p>
-                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">BCUs issued</p>
+                <p className="text-xs font-medium text-[var(--muted-foreground)]">Monitoring Period</p>
+                <p className="text-3xl font-bold mt-1 tracking-tight">{stats.monitoringPeriodCount}</p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">periods tracked</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <Award className="h-5 w-5 text-amber-500" />
+              <div className="h-10 w-10 rounded-full bg-violet-500/10 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-violet-500" />
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-[var(--border)]">
-              <div className="flex items-center gap-2 text-xs">
-                <Badge variant="default" className="text-[10px] h-5">{stats.bcuCount - stats.bcuRetiredCount - stats.bcuTransferredCount} active</Badge>
-                <Badge variant="secondary" className="text-[10px] h-5">{stats.bcuRetiredCount} retired</Badge>
-              </div>
+              {stats.activeMonitoringPeriod ? (
+                <Link href={`/monitoring/${stats.activeMonitoringPeriod.id}`} className="text-xs text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-0.5">
+                  Active period <ChevronRight className="h-3 w-3" />
+                </Link>
+              ) : (
+                <Link href="/monitoring/new" className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] flex items-center gap-0.5">
+                  Create period <ChevronRight className="h-3 w-3" />
+                </Link>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -519,7 +622,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 { label: 'Feedstock', href: '/feedstock', icon: Leaf, count: stats.feedstockCount, color: 'emerald' },
                 { label: 'Production', href: '/production', icon: Factory, count: stats.productionCount, color: 'blue' },
                 { label: 'Sequestration', href: '/sequestration', icon: ArrowDownToLine, count: stats.sequestrationCount, color: 'violet' },
-                { label: 'Registry', href: '/registry', icon: Award, count: stats.bcuCount, color: 'amber' },
+                { label: 'CORC Registry', href: '/corc', icon: Award, count: stats.corcCount, color: 'amber' },
               ].map((item) => {
                 const Icon = item.icon;
                 const colorClasses = {
@@ -548,10 +651,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             {/* Additional Links */}
             <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-0.5">
               {[
+                { label: 'Facility', href: '/facility', icon: Building2 },
+                { label: 'Monitoring', href: '/monitoring', icon: Calendar, count: stats.monitoringPeriodCount },
                 { label: 'Energy', href: '/energy', icon: Zap, count: stats.energyCount },
                 { label: 'Transport', href: '/transport', icon: Truck, count: stats.transportCount },
-                { label: 'Network Map', href: '/network', icon: MapPin },
-                { label: 'Emission Factors', href: '/datasets', icon: Database },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
@@ -568,19 +671,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               })}
             </div>
 
-            {/* LCA Link */}
+            {/* CORC Calculator Link */}
             <div className="mt-3">
               <Link
                 href="/lca"
-                className="flex items-center gap-2.5 p-2.5 rounded-md bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 hover:border-violet-500/40 transition-colors group"
+                className="flex items-center gap-2.5 p-2.5 rounded-md bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors group"
               >
-                <div className="h-7 w-7 rounded-md bg-violet-500/10 flex items-center justify-center">
-                  <TrendingUp className="h-3.5 w-3.5 text-violet-500" />
+                <div className="h-7 w-7 rounded-md bg-emerald-500/10 flex items-center justify-center">
+                  <Calculator className="h-3.5 w-3.5 text-emerald-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">LCA Calculator</p>
+                  <p className="text-sm font-medium">CORC Calculator</p>
+                  <p className="text-[10px] text-[var(--muted-foreground)]">Puro.earth methodology</p>
                 </div>
-                <ChevronRight className="h-3.5 w-3.5 text-violet-500 group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="h-3.5 w-3.5 text-emerald-500 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             </div>
           </CardContent>

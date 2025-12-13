@@ -59,14 +59,22 @@ export async function PUT(
 
     const { id: _id, ...data } = result.data;
 
-    // Check if coordinates are changing
+    // Check if record exists before attempting update
     const existing = await db.feedstockDelivery.findUnique({
       where: { id },
       select: { sourceLat: true, sourceLng: true },
     });
 
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Feedstock delivery not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if coordinates are changing
     const coordsChanged =
-      data.sourceLat !== existing?.sourceLat || data.sourceLng !== existing?.sourceLng;
+      data.sourceLat !== existing.sourceLat || data.sourceLng !== existing.sourceLng;
 
     const feedstock = await db.feedstockDelivery.update({
       where: { id },
@@ -105,6 +113,19 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Check if record exists before attempting delete
+    const existing = await db.feedstockDelivery.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Feedstock delivery not found' },
+        { status: 404 }
+      );
+    }
 
     await db.feedstockDelivery.delete({
       where: { id },

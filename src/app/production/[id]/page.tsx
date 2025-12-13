@@ -14,18 +14,42 @@ import {
   Badge,
 } from '@/components/ui';
 import { QRDisplay } from '@/components/qr';
+import {
+  Beaker,
+  CheckCircle2,
+  Circle,
+  XCircle,
+  Award,
+  Leaf,
+  Factory,
+  ArrowDownToLine,
+  ChevronRight,
+} from 'lucide-react';
 
 async function getProductionBatch(id: string) {
   return db.productionBatch.findUnique({
     where: { id },
     include: {
       evidence: true,
+      labTests: {
+        select: {
+          id: true,
+          labName: true,
+          testDate: true,
+          organicCarbonPercent: true,
+          hydrogenPercent: true,
+          hCorgRatio: true,
+        },
+        orderBy: { testDate: 'desc' },
+      },
       feedstockDelivery: {
         select: {
           id: true,
           date: true,
           feedstockType: true,
           weightTonnes: true,
+          puroCategory: true,
+          puroCategoryName: true,
         },
       },
       feedstockAllocations: {
@@ -36,6 +60,8 @@ async function getProductionBatch(id: string) {
               date: true,
               feedstockType: true,
               weightTonnes: true,
+              puroCategory: true,
+              puroCategoryName: true,
             },
           },
         },
@@ -54,6 +80,13 @@ async function getProductionBatch(id: string) {
         include: {
           bcu: {
             select: { id: true, registrySerialNumber: true, status: true },
+          },
+        },
+      },
+      corcBatches: {
+        include: {
+          corc: {
+            select: { id: true, serialNumber: true, status: true },
           },
         },
       },
@@ -187,6 +220,252 @@ export default async function ProductionDetailPage({
                 {batch.temperatureMax ? `${batch.temperatureMax}°C` : '-'}
               </span>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Puro Quality Parameters */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Beaker className="h-5 w-5" />
+              Puro Quality Parameters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* H/C_org Ratio - Key quality indicator */}
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-[var(--muted-foreground)]">H/C_org Ratio</span>
+                  {batch.hCorgRatio !== null ? (
+                    <Badge variant={batch.hCorgRatio <= 0.7 ? 'default' : 'destructive'}>
+                      {batch.hCorgRatio <= 0.7 ? 'PASS' : 'FAIL'}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">Not Set</Badge>
+                  )}
+                </div>
+                <p className="text-2xl font-bold">
+                  {batch.hCorgRatio?.toFixed(3) ?? '—'}
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                  Threshold: ≤ 0.7 for CORC eligibility
+                </p>
+              </div>
+
+              {/* Carbon & Hydrogen Content */}
+              <div className="p-4 border rounded-lg space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-[var(--muted-foreground)]">Organic Carbon</span>
+                  <span className="font-medium">
+                    {batch.organicCarbonPercent?.toFixed(1) ?? '—'}%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-[var(--muted-foreground)]">Hydrogen</span>
+                  <span className="font-medium">
+                    {batch.hydrogenPercent?.toFixed(2) ?? '—'}%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-[var(--muted-foreground)]">Validation Status</span>
+                  <Badge variant={batch.qualityValidationStatus === 'validated' ? 'default' : 'outline'}>
+                    {batch.qualityValidationStatus?.replace(/_/g, ' ') ?? 'Pending'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Lab Tests */}
+              <div className="md:col-span-2">
+                <p className="text-sm font-medium mb-2">Lab Tests</p>
+                {batch.labTests.length > 0 ? (
+                  <div className="space-y-2">
+                    {batch.labTests.map((test) => (
+                      <div
+                        key={test.id}
+                        className="flex items-center justify-between p-3 border rounded hover:bg-[var(--muted)] transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Beaker className="h-4 w-4 text-[var(--muted-foreground)]" />
+                          <div>
+                            <p className="font-medium text-sm">{test.labName || 'Lab Test'}</p>
+                            <p className="text-xs text-[var(--muted-foreground)]">
+                              {test.testDate ? formatDateTime(test.testDate) : 'Date unknown'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {test.hCorgRatio !== null && (
+                            <Badge
+                              variant={test.hCorgRatio <= 0.7 ? 'default' : 'destructive'}
+                              className="text-xs"
+                            >
+                              H/C: {test.hCorgRatio.toFixed(3)}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--muted-foreground)] p-3 border rounded border-dashed text-center">
+                    No lab tests on file. Lab testing is required for CORC issuance.
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CORC Eligibility Checklist */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Award className="h-5 w-5" />
+              CORC Eligibility
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const hasLabTest = batch.labTests.length > 0;
+              const qualityPassed = batch.hCorgRatio !== null && batch.hCorgRatio <= 0.7;
+              const hasSequestration = batch.sequestrationBatches.length > 0;
+              const includedInCORC = batch.corcBatches && batch.corcBatches.length > 0;
+
+              const checks = [
+                {
+                  label: 'Quality validated (H/C_org ≤ 0.7)',
+                  passed: qualityPassed,
+                  detail: batch.hCorgRatio !== null ? `H/C_org = ${batch.hCorgRatio.toFixed(3)}` : 'Not measured',
+                },
+                {
+                  label: 'Lab test on file',
+                  passed: hasLabTest,
+                  detail: hasLabTest ? `${batch.labTests.length} test(s) available` : 'No lab tests uploaded',
+                },
+                {
+                  label: 'Linked to sequestration event',
+                  passed: hasSequestration,
+                  detail: hasSequestration ? `${batch.sequestrationBatches.length} event(s)` : 'Not yet sequestered',
+                },
+                {
+                  label: 'Included in CORC issuance',
+                  passed: includedInCORC,
+                  detail: includedInCORC ? `CORC: ${batch.corcBatches[0].corc.serialNumber}` : 'Not yet included',
+                },
+              ];
+
+              const passedCount = checks.filter(c => c.passed).length;
+
+              return (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--muted)]/50">
+                    <div className="text-2xl font-bold">{passedCount}/4</div>
+                    <div>
+                      <p className="text-sm font-medium">Eligibility Score</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        {passedCount === 4 ? 'Ready for CORC' : 'Requirements incomplete'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {checks.map((check, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-2 border rounded"
+                      >
+                        <div className="flex items-center gap-2">
+                          {check.passed ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-[var(--muted-foreground)]" />
+                          )}
+                          <span className="text-sm">{check.label}</span>
+                        </div>
+                        <span className="text-xs text-[var(--muted-foreground)]">
+                          {check.detail}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+
+        {/* Data Lineage */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Data Lineage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 overflow-x-auto py-2">
+              {/* Feedstock */}
+              <div className="flex items-center gap-1 px-3 py-2 bg-green-500/10 text-green-700 rounded text-sm">
+                <Leaf className="h-4 w-4" />
+                <span>Feedstock</span>
+                <span className="text-xs opacity-70">
+                  ({batch.feedstockAllocations.length || (batch.feedstockDelivery ? 1 : 0)})
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)] flex-shrink-0" />
+
+              {/* This Batch */}
+              <div className="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white rounded text-sm font-medium">
+                <Factory className="h-4 w-4" />
+                <span>This Batch</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)] flex-shrink-0" />
+
+              {/* Sequestration */}
+              <div className={`flex items-center gap-1 px-3 py-2 rounded text-sm ${
+                batch.sequestrationBatches.length > 0
+                  ? 'bg-purple-500/10 text-purple-700'
+                  : 'bg-[var(--muted)] text-[var(--muted-foreground)]'
+              }`}>
+                <ArrowDownToLine className="h-4 w-4" />
+                <span>Sequestration</span>
+                {batch.sequestrationBatches.length > 0 && (
+                  <span className="text-xs opacity-70">({batch.sequestrationBatches.length})</span>
+                )}
+              </div>
+              <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)] flex-shrink-0" />
+
+              {/* CORC */}
+              <div className={`flex items-center gap-1 px-3 py-2 rounded text-sm ${
+                batch.corcBatches && batch.corcBatches.length > 0
+                  ? 'bg-emerald-500/10 text-emerald-700'
+                  : 'bg-[var(--muted)] text-[var(--muted-foreground)]'
+              }`}>
+                <Award className="h-4 w-4" />
+                <span>CORC</span>
+                {batch.corcBatches && batch.corcBatches.length > 0 && (
+                  <span className="text-xs opacity-70">({batch.corcBatches.length})</span>
+                )}
+              </div>
+            </div>
+
+            {/* CORC Links */}
+            {batch.corcBatches && batch.corcBatches.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                <p className="text-sm font-medium mb-2">Linked CORCs</p>
+                <div className="space-y-2">
+                  {batch.corcBatches.map((cb) => (
+                    <Link
+                      key={cb.corc.id}
+                      href={`/corc/${cb.corc.id}`}
+                      className="flex items-center justify-between p-2 border rounded hover:bg-[var(--muted)] transition-colors"
+                    >
+                      <span className="font-mono text-sm">{cb.corc.serialNumber}</span>
+                      <Badge variant={cb.corc.status === 'issued' ? 'default' : 'outline'}>
+                        {cb.corc.status}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -6,6 +6,7 @@ import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { Button, Spinner, Card, CardContent } from '@/components/ui';
 import { PlantSettingsDialog } from '@/components/network';
 import { MapTimeFilter } from '@/components/network/map-time-filter';
+import { NetworkTimeline } from '@/components/network/network-timeline';
 import { Settings, MapPin } from 'lucide-react';
 
 // Dynamic import for NetworkMap to avoid SSR issues with mapbox-gl
@@ -168,31 +169,17 @@ export default function NetworkPage() {
       ) : (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
             <Card>
               <CardContent className="pt-4">
                 <p className="text-xl md:text-2xl font-semibold">{mapData?.feedstockSources.length || 0}</p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  Feedstock Sources
-                  {mapData && mapData.stats.totalFeedstock > mapData.feedstockSources.length && (
-                    <span className="text-[var(--warning)] ml-1">
-                      ({mapData.stats.totalFeedstock - mapData.feedstockSources.length} unmapped)
-                    </span>
-                  )}
-                </p>
+                <p className="text-xs text-[var(--muted-foreground)]">Feedstock Sources</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
                 <p className="text-xl md:text-2xl font-semibold">{mapData?.destinations.length || 0}</p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  Destinations
-                  {mapData && mapData.stats.totalSequestration > mapData.destinations.length && (
-                    <span className="text-[var(--warning)] ml-1">
-                      ({mapData.stats.totalSequestration - mapData.destinations.length} unmapped)
-                    </span>
-                  )}
-                </p>
+                <p className="text-xs text-[var(--muted-foreground)]">Destinations</p>
               </CardContent>
             </Card>
             <Card>
@@ -208,6 +195,13 @@ export default function NetworkPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Timeline Chart */}
+          <NetworkTimeline
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onMonthSelect={handleTimeChange}
+          />
 
           {/* Map */}
           <div className="h-[400px] md:h-[500px] lg:h-[calc(100vh-340px)] lg:min-h-[500px]">
