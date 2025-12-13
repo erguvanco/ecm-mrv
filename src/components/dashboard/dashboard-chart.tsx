@@ -57,7 +57,10 @@ export function DashboardChart() {
           ? `/api/dashboard/chart-data?range=${range}`
           : '/api/dashboard/chart-data';
         const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch chart data');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.details || 'Failed to fetch chart data');
+        }
         const result = await response.json();
         setData(result.data);
       } catch (err) {

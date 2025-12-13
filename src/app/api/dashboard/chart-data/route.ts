@@ -102,8 +102,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: chartData });
   } catch (error) {
     console.error('Error fetching chart data:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch chart data' },
+      { error: 'Failed to fetch chart data', details: errorMessage },
       { status: 500 }
     );
   }
