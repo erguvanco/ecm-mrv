@@ -203,7 +203,7 @@ export function NetworkTimeline({
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--accent)', opacity: 0.3 }} />
               <Bar
-                dataKey="incoming.count"
+                dataKey="incoming.tonnage"
                 radius={[2, 2, 0, 0]}
                 onClick={(data) => handleBarClick(data as unknown as MonthData)}
                 style={{ cursor: 'pointer' }}
@@ -218,7 +218,7 @@ export function NetworkTimeline({
                 ))}
               </Bar>
               <Bar
-                dataKey="production.count"
+                dataKey="production.tonnage"
                 radius={[2, 2, 0, 0]}
                 onClick={(data) => handleBarClick(data as unknown as MonthData)}
                 style={{ cursor: 'pointer' }}
@@ -233,7 +233,7 @@ export function NetworkTimeline({
                 ))}
               </Bar>
               <Bar
-                dataKey="outgoing.count"
+                dataKey="outgoing.tonnage"
                 radius={[2, 2, 0, 0]}
                 onClick={(data) => handleBarClick(data as unknown as MonthData)}
                 style={{ cursor: 'pointer' }}
