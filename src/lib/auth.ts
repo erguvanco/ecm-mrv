@@ -68,10 +68,35 @@ export function unauthorizedResponse(message = 'Unauthorized') {
 
 /**
  * List of public paths that don't require authentication
+ * These are internal API routes used by the web app's frontend
  */
 export const PUBLIC_PATHS = [
   '/api/health',
   '/api/status',
+  // Dashboard
+  '/api/dashboard',
+  // Data modules
+  '/api/feedstock',
+  '/api/production',
+  '/api/sequestration',
+  '/api/transport',
+  '/api/energy',
+  // Network/Supply chain
+  '/api/network',
+  '/api/supply-network',
+  // Settings & utilities
+  '/api/plant-settings',
+  '/api/geocode',
+  '/api/qr-scan',
+  '/api/map',
+  // CORC/Registry
+  '/api/facility',
+  '/api/monitoring',
+  '/api/corc',
+  '/api/registry',
+  '/api/calculator',
+  // Datasets
+  '/api/emission-factors',
 ];
 
 /**
