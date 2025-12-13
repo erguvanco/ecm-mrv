@@ -24,7 +24,10 @@ export default function NewProductionScreen() {
     feedstockDeliveryId: '',
     inputFeedstockWeightTonnes: '',
     outputBiocharWeightTonnes: '',
-    peakTemperatureCelsius: '',
+    // Temperature fields (updated from single peak temp)
+    temperatureMin: '',
+    temperatureMax: '',
+    temperatureAvg: '',
     residenceTimeMinutes: '',
   });
 
@@ -34,20 +37,26 @@ export default function NewProductionScreen() {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: typeof formData) => api.production.create({
-      ...data,
-      inputFeedstockWeightTonnes: parseFloat(data.inputFeedstockWeightTonnes),
-      outputBiocharWeightTonnes: parseFloat(data.outputBiocharWeightTonnes),
-      peakTemperatureCelsius: data.peakTemperatureCelsius ? parseInt(data.peakTemperatureCelsius) : null,
-      residenceTimeMinutes: data.residenceTimeMinutes ? parseInt(data.residenceTimeMinutes) : null,
-    }),
+    mutationFn: async (data: typeof formData) => {
+      const payload = {
+        productionDate: data.productionDate,
+        feedstockDeliveryId: data.feedstockDeliveryId || null,
+        inputFeedstockWeightTonnes: parseFloat(data.inputFeedstockWeightTonnes),
+        outputBiocharWeightTonnes: parseFloat(data.outputBiocharWeightTonnes),
+        temperatureMin: data.temperatureMin ? parseInt(data.temperatureMin) : null,
+        temperatureMax: data.temperatureMax ? parseInt(data.temperatureMax) : null,
+        temperatureAvg: data.temperatureAvg ? parseInt(data.temperatureAvg) : null,
+        residenceTimeMinutes: data.residenceTimeMinutes ? parseInt(data.residenceTimeMinutes) : null,
+      };
+      return api.production.create(payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production-batches'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       router.back();
     },
-    onError: () => {
-      Alert.alert('Error', 'Failed to create production batch');
+    onError: (error: Error) => {
+      Alert.alert('Error', error.message || 'Failed to create production batch');
     },
   });
 
@@ -56,9 +65,15 @@ export default function NewProductionScreen() {
       Alert.alert('Required', 'Please select a feedstock source');
       return;
     }
-    if (step === 1 && (!formData.inputFeedstockWeightTonnes || !formData.outputBiocharWeightTonnes)) {
-      Alert.alert('Required', 'Please enter input and output weights');
-      return;
+    if (step === 1) {
+      if (!formData.inputFeedstockWeightTonnes || parseFloat(formData.inputFeedstockWeightTonnes) <= 0) {
+        Alert.alert('Required', 'Please enter input weight');
+        return;
+      }
+      if (!formData.outputBiocharWeightTonnes || parseFloat(formData.outputBiocharWeightTonnes) <= 0) {
+        Alert.alert('Required', 'Please enter output weight');
+        return;
+      }
     }
     if (step < 2) {
       setStep(step + 1);
@@ -75,15 +90,19 @@ export default function NewProductionScreen() {
             <CardContent className="p-4">
               <Text className="text-sm font-semibold text-slate-700 mb-3">Select Feedstock Source</Text>
               <Input
-                label="Production Date"
+                label="Production Date *"
                 value={formData.productionDate}
                 onChangeText={(text) => setFormData({ ...formData, productionDate: text })}
                 placeholder="YYYY-MM-DD"
                 containerClassName="mb-4"
               />
-              <Text className="text-sm font-medium text-slate-700 mb-2">Available Feedstock</Text>
+              <Text className="text-sm font-medium text-slate-700 mb-2">Available Feedstock *</Text>
               {feedstocks.length === 0 ? (
-                <Text className="text-sm text-slate-500">No feedstock deliveries available</Text>
+                <View className="p-4 bg-amber-50 rounded-lg">
+                  <Text className="text-sm text-amber-700">
+                    No feedstock deliveries available. Please add feedstock first.
+                  </Text>
+                </View>
               ) : (
                 <View className="gap-2">
                   {feedstocks.slice(0, 10).map((f) => (
@@ -100,7 +119,7 @@ export default function NewProductionScreen() {
                         {f.serialNumber || 'No Serial'}
                       </Text>
                       <Text className="text-xs text-slate-500">
-                        {f.feedstockType.replace(/_/g, ' ')} • {f.weightTonnes.toFixed(1)}t
+                        {f.feedstockType.replace(/_/g, ' ')} - {f.weightTonnes.toFixed(1)}t
                       </Text>
                     </Pressable>
                   ))}
@@ -115,14 +134,14 @@ export default function NewProductionScreen() {
             <CardContent className="p-4 gap-4">
               <Text className="text-sm font-semibold text-slate-700">Input & Output</Text>
               <Input
-                label="Input Feedstock (tonnes)"
+                label="Input Feedstock (tonnes) *"
                 value={formData.inputFeedstockWeightTonnes}
                 onChangeText={(text) => setFormData({ ...formData, inputFeedstockWeightTonnes: text })}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
               />
               <Input
-                label="Output Biochar (tonnes)"
+                label="Output Biochar (tonnes) *"
                 value={formData.outputBiocharWeightTonnes}
                 onChangeText={(text) => setFormData({ ...formData, outputBiocharWeightTonnes: text })}
                 placeholder="0.00"
@@ -147,14 +166,41 @@ export default function NewProductionScreen() {
         return (
           <Card>
             <CardContent className="p-4 gap-4">
-              <Text className="text-sm font-semibold text-slate-700">Process Parameters (Optional)</Text>
-              <Input
-                label="Peak Temperature (°C)"
-                value={formData.peakTemperatureCelsius}
-                onChangeText={(text) => setFormData({ ...formData, peakTemperatureCelsius: text })}
-                placeholder="e.g., 550"
-                keyboardType="numeric"
-              />
+              <Text className="text-sm font-semibold text-slate-700">Process Parameters</Text>
+              <Text className="text-xs text-slate-500">
+                Temperature values help calculate biochar quality metrics
+              </Text>
+
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <Input
+                    label="Min Temp (°C)"
+                    value={formData.temperatureMin}
+                    onChangeText={(text) => setFormData({ ...formData, temperatureMin: text })}
+                    placeholder="300"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Input
+                    label="Max Temp (°C)"
+                    value={formData.temperatureMax}
+                    onChangeText={(text) => setFormData({ ...formData, temperatureMax: text })}
+                    placeholder="700"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Input
+                    label="Avg Temp (°C)"
+                    value={formData.temperatureAvg}
+                    onChangeText={(text) => setFormData({ ...formData, temperatureAvg: text })}
+                    placeholder="550"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
               <Input
                 label="Residence Time (minutes)"
                 value={formData.residenceTimeMinutes}
@@ -162,6 +208,15 @@ export default function NewProductionScreen() {
                 placeholder="e.g., 30"
                 keyboardType="numeric"
               />
+
+              {formData.temperatureMin && formData.temperatureMax && (
+                <View className="bg-slate-50 p-3 rounded-lg">
+                  <Text className="text-xs text-slate-600">
+                    Temperature range: {formData.temperatureMin}°C - {formData.temperatureMax}°C
+                    {formData.temperatureAvg && ` (avg: ${formData.temperatureAvg}°C)`}
+                  </Text>
+                </View>
+              )}
             </CardContent>
           </Card>
         );

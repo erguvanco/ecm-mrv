@@ -57,9 +57,7 @@ export default function TransportScreen() {
           renderItem={({ item }) => (
             <Pressable
               className="bg-white mx-4 mb-3 p-4 rounded-xl border border-slate-200 active:bg-slate-50"
-              onPress={() =>
-                router.push({ pathname: '/transport/[id]', params: { id: item.id } })
-              }
+              onPress={() => router.push(`/transport/${item.id}` as never)}
             >
               <View className="flex-row items-center gap-3">
                 <View className="h-10 w-10 rounded-lg bg-slate-100 items-center justify-center">

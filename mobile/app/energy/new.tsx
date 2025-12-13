@@ -14,6 +14,7 @@ const ENERGY_TYPES = [
   { value: 'lpg', label: 'LPG' },
   { value: 'biomass', label: 'Biomass' },
   { value: 'solar', label: 'Solar' },
+  { value: 'other', label: 'Other' },
 ];
 
 const SCOPES = [
@@ -39,29 +40,58 @@ export default function NewEnergyScreen() {
     periodStart: new Date().toISOString().split('T')[0],
     periodEnd: new Date().toISOString().split('T')[0],
     energyType: 'electricity',
+    otherEnergyType: '',
     quantity: '',
     unit: 'kWh',
     scope: 'production',
+    otherScope: '',
     description: '',
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
+      newErrors.quantity = 'Valid quantity is required';
+    }
+    if (formData.energyType === 'other' && !formData.otherEnergyType.trim()) {
+      newErrors.otherEnergyType = 'Please specify the energy type';
+    }
+    if (formData.scope === 'other' && !formData.otherScope.trim()) {
+      newErrors.otherScope = 'Please specify the scope';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const mutation = useMutation({
-    mutationFn: (data: typeof formData) => api.energy.create({
-      ...data,
-      quantity: parseFloat(data.quantity),
-    }),
+    mutationFn: (data: typeof formData) => {
+      const payload = {
+        periodStart: data.periodStart,
+        periodEnd: data.periodEnd,
+        energyType: data.energyType === 'other' ? data.otherEnergyType : data.energyType,
+        quantity: parseFloat(data.quantity),
+        unit: data.unit,
+        scope: data.scope === 'other' ? data.otherScope : data.scope,
+        description: data.description || null,
+      };
+      return api.energy.create(payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['energy-records'] });
       router.back();
     },
-    onError: () => {
-      Alert.alert('Error', 'Failed to create energy record');
+    onError: (error: Error) => {
+      Alert.alert('Error', error.message || 'Failed to create energy record');
     },
   });
 
   const handleSubmit = () => {
-    if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
-      Alert.alert('Validation Error', 'Please enter a valid quantity');
+    if (!validate()) {
+      Alert.alert('Validation Error', 'Please fill in all required fields');
       return;
     }
     mutation.mutate(formData);
@@ -102,7 +132,7 @@ export default function NewEnergyScreen() {
               </View>
 
               <View className="gap-1.5">
-                <Text className="text-sm font-medium text-slate-700">Energy Type</Text>
+                <Text className="text-sm font-medium text-slate-700">Energy Type *</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {ENERGY_TYPES.map((type) => (
                     <Pressable
@@ -124,16 +154,27 @@ export default function NewEnergyScreen() {
                     </Pressable>
                   ))}
                 </View>
+                {formData.energyType === 'other' && (
+                  <Input
+                    label="Specify Energy Type *"
+                    value={formData.otherEnergyType}
+                    onChangeText={(text) => setFormData({ ...formData, otherEnergyType: text })}
+                    placeholder="e.g., Biogas, Hydrogen"
+                    error={errors.otherEnergyType}
+                    containerClassName="mt-2"
+                  />
+                )}
               </View>
 
               <View className="flex-row gap-3">
                 <Input
-                  label="Quantity"
+                  label="Quantity *"
                   value={formData.quantity}
                   onChangeText={(text) => setFormData({ ...formData, quantity: text })}
                   placeholder="0.00"
                   keyboardType="decimal-pad"
                   containerClassName="flex-2"
+                  error={errors.quantity}
                 />
                 <View className="gap-1.5 flex-1">
                   <Text className="text-sm font-medium text-slate-700">Unit</Text>
@@ -162,7 +203,7 @@ export default function NewEnergyScreen() {
               </View>
 
               <View className="gap-1.5">
-                <Text className="text-sm font-medium text-slate-700">Scope</Text>
+                <Text className="text-sm font-medium text-slate-700">Scope *</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {SCOPES.map((scope) => (
                     <Pressable
@@ -184,6 +225,16 @@ export default function NewEnergyScreen() {
                     </Pressable>
                   ))}
                 </View>
+                {formData.scope === 'other' && (
+                  <Input
+                    label="Specify Scope *"
+                    value={formData.otherScope}
+                    onChangeText={(text) => setFormData({ ...formData, otherScope: text })}
+                    placeholder="e.g., Maintenance, Laboratory"
+                    error={errors.otherScope}
+                    containerClassName="mt-2"
+                  />
+                )}
               </View>
 
               <Input

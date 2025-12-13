@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { LayoutDashboard, Leaf, Factory, ArrowDownToLine, Menu } from 'lucide-react-native';
+import { Home, PlusCircle, QrCode, List } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -31,45 +31,40 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
+          title: 'Home',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <LayoutDashboard color={color} size={size} />
+            <Home color={color} size={size} />
           ),
         }}
       />
       <Tabs.Screen
-        name="feedstock"
+        name="entry"
         options={{
-          title: 'Feedstock',
+          title: 'Entry',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Leaf color={color} size={size} />
+            <PlusCircle color={color} size={size} />
           ),
         }}
       />
       <Tabs.Screen
-        name="production"
+        name="scan"
         options={{
-          title: 'Production',
+          title: 'Scan',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Factory color={color} size={size} />
+            <QrCode color={color} size={size} />
           ),
         }}
       />
       <Tabs.Screen
-        name="sequestration"
+        name="list"
         options={{
-          title: 'Sequestration',
+          title: 'Records',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <ArrowDownToLine color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: 'More',
-          tabBarIcon: ({ color, size }) => (
-            <Menu color={color} size={size} />
+            <List color={color} size={size} />
           ),
         }}
       />
